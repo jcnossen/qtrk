@@ -1,4 +1,3 @@
-
 // Defines the interface for trackers (both CPU and CUDA)
 
 #pragma once
@@ -10,7 +9,10 @@
 
 #include "qtrk_c_api.h"
 
-struct ImageData;
+template<typename T>
+struct TImageData;
+typedef TImageData<float> ImageData;
+class CImageData;
 
 // minimum number of samples for a profile radial bin. Below this the image mean will be used
 #define MIN_RADPROFILE_SMP_COUNT 4
@@ -59,7 +61,10 @@ public:
 
 #define BUILDLUT_IMAGELUT 1
 #define BUILDLUT_FOURIER 2
-	virtual void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, uint flags, int plane) = 0;
+#define BUILDLUT_NORMALIZE 4
+#define BUILDLUT_BIASCORRECT 8
+	virtual void BeginLUT(uint flags) = 0;
+	virtual void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos=0) = 0;
 	virtual void FinalizeLUT() = 0;
 	
 	virtual int GetResultCount() = 0;
@@ -81,6 +86,13 @@ public:
 	QTrkComputedConfig cfg;
 
 	void ScheduleLocalization(uchar* data, int pitch, QTRK_PixelDataType pdt, uint frame, uint timestamp, vector3f* initial, uint zlutIndex);
+	void ComputeZBiasCorrection(int bias_planes, CImageData* result, int smpPerPixel, bool useSplineInterp);
+	float ZLUTBiasCorrection(float z, int zlut_planes, int bead);
+	void SetZLUTBiasCorrection(const CImageData& data); // w=zlut_planes, h=zlut_count
+	CImageData *GetZLUTBiasCorrection();
+
+protected:
+	CImageData* zlut_bias_correction;
 };
 
 void CopyImageToFloat(uchar* data, int width, int height, int pitch, QTRK_PixelDataType pdt, float* dst);
@@ -94,14 +106,17 @@ void SetCUDADevices(int *devices, int numdev); // empty for CPU tracker
 #define QI_LSQFIT_WEIGHTS { 0.14f, 0.5f, 0.85f, 1.0f, 0.85f, 0.5f, 0.14f }
 #define QI_LSQFIT_NWEIGHTS 7
 
-#define ZLUT_LSQFIT_WEIGHTS { 0.5f, 0.85f, 1.0f, 0.85f, 0.5f }
-#define ZLUT_LSQFIT_NWEIGHTS 5
+//#define ZLUT_LSQFIT_NWEIGHTS 5
+//#define ZLUT_LSQFIT_WEIGHTS { 0.5f, 0.85f, 1.0f, 0.85f, 0.5f }
+
 //#define ZLUT_LSQFIT_NWEIGHTS 3
 //#define ZLUT_LSQFIT_WEIGHTS { 0.85f, 1.0f, 0.85f }
-//#define ZLUT_LSQFIT_WEIGHTS { 0.3f, 0.5f, 0.85f, 1.0f, 0.85f, 0.5f, 0.3f }
-//#define ZLUT_LSQFIT_NWEIGHTS 7
-//#define ZLUT_LSQFIT_WEIGHTS {0.4f, 0.5f, 0.7f, 0.9f, 1.0f, 0.9f, 0.7f, 0.5f, 0.4f }
+
+#define ZLUT_LSQFIT_NWEIGHTS 7
+#define ZLUT_LSQFIT_WEIGHTS { 0.15f, 0.5f, 0.85f, 1.0f, 0.85f, 0.5f, 0.15f }
+
 //#define ZLUT_LSQFIT_NWEIGHTS 9
+//#define ZLUT_LSQFIT_WEIGHTS {0.4f, 0.5f, 0.7f, 0.9f, 1.0f, 0.9f, 0.7f, 0.5f, 0.4f }
 
 inline int PDT_BytesPerPixel(QTRK_PixelDataType pdt) {
 	const int pdtBytes[] = {1, 2, 4};

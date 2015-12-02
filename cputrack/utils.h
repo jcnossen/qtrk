@@ -1,6 +1,7 @@
 #pragma once
 
 #include "std_incl.h"
+#include "scalar_types.h"
 
 template<typename T> bool isNAN(const T& v) { 
 	return !(v == v); 
@@ -32,9 +33,11 @@ void normalize(TPixel* d, uint w,uint h)
 		d[k]=(d[k]-minv)/(maxv-minv);
 }
 
-inline float Lerp(float a, float b, float x) { return a + (b-a)*x; }
+template<typename T>
+inline T Lerp(T a, T b, float x) { return a + (b-a)*x; }
 
-inline float Interpolate(float* image, int width, int height, float x,float y, bool* outside=0)
+template<typename T>
+inline T Interpolate(T* image, int width, int height, float x,float y, bool* outside=0)
 {
 	int rx=x, ry=y;
 	if (rx<0 || ry <0 || rx+1 >= width || ry+1>=height) {
@@ -43,13 +46,13 @@ inline float Interpolate(float* image, int width, int height, float x,float y, b
 	}
 	if (outside) *outside=false;
 
-	float v00 = image[width*ry+rx];
-	float v10 = image[width*ry+rx+1];
-	float v01 = image[width*(ry+1)+rx];
-	float v11 = image[width*(ry+1)+rx+1];
+	T v00 = image[width*ry+rx];
+	T v10 = image[width*ry+rx+1];
+	T v01 = image[width*(ry+1)+rx];
+	T v11 = image[width*(ry+1)+rx+1];
 
-	float v0 = Lerp(v00, v10, x-rx);
-	float v1 = Lerp(v01, v11, x-rx);
+	T v0 = Lerp(v00, v10, x-rx);
+	T v1 = Lerp(v01, v11, x-rx);
 
 	return Lerp(v0, v1, y-ry);
 }
@@ -69,40 +72,91 @@ inline T Interpolate1D(const std::vector<T>& d, float x)
 	return Interpolate1D(&d[0],d.size(),x);
 }
 
-struct ImageData;
-
 void WriteImageAsCSV(const char* file, float* d, int w,int h, const char *labels[]=0);
 
-struct ImageData {
-	float* data;
+template<typename T>
+struct TImageData {
+	T* data;
 	int w,h;
-	ImageData() { data=0;w=h=0;}
-	ImageData(float *d, int w, int h) : data(d), w(w),h(h) {}
-	float& at(int x, int y) { return data[w*y+x]; }
-	float interpolate(float x, float y, bool *outside=0) { return Interpolate(data, w,h, x,y,outside); }
-	int numPixels() { return w*h; }
-	int pitch() { return sizeof(float)*w; } // bytes per line
+	TImageData() { data=0;w=h=0;}
+	TImageData(T *d, int w, int h) : data(d), w(w),h(h) {}
+	template<typename Ta> void set(Ta *src) { for (int i=0;i<w*h;i++) data[i] = src[i]; }
+	template<typename Ta> void set(const TImageData<Ta> &src) { 
+		if (!data || numPixels()!=src.numPixels()) { 
+			free(); 
+			w=src.w; h=src.h; 
+			if(src.data) { data=new T[src.w*src.h]; }
+		}
+		set(src.data); 
+	}
+	void copyTo(float *dst) {
+		for (int i=0;i<w*h;i++) dst[i]=data[i];
+	}
+	T& at(int x, int y) { return data[w*y+x]; }
+	T interpolate(float x, float y, bool *outside=0) { return Interpolate(data, w,h, x,y,outside); }
+	T interpolate1D(int y, float x) { return Interpolate1D(&data[w*y], w, x); }
+	int numPixels() const { return w*h; }
+	int pitch() const { return sizeof(T)*w; } // bytes per line
 	void normalize() { ::normalize(data,w,h); }
-	float mean() {
-		float s=0.0f;
+	T mean() {
+		T s=0.0f;
 		for(int x=0;x<w*h;x++)
 			s+=data[x];
 		return s/(w*h);
 	}
-	float& operator[](int i) { return data[i]; }
+	T& operator[](int i) { return data[i]; }
 
-	static ImageData alloc(int w,int h) { return ImageData(new float[w*h], w,h); }
-	void free() { delete[] data; }
+	static TImageData alloc(int w,int h) { return TImageData<T>(new T[w*h], w,h); }
+	void free() { if(data) delete[] data;data=0; }
 	void writeAsCSV(const char *filename, const char *labels[]=0) { WriteImageAsCSV(filename, data, w,h,labels); }
 };
 
-std::vector<float> ComputeStetsonWindow(int rsteps);
+class CImageData : public TImageData<float> {
+public:
+	CImageData(int w,int h) : TImageData<float>(new float[w*h],w,h) { 
+	}
+	CImageData(const CImageData& other) {
+		data=0; set(other);
+	}
+	CImageData() {}
+	~CImageData() { free(); }
+	CImageData(const TImageData<float> &src) {
+		data=0; set(src);
+	}
+	
+	CImageData& operator=(const CImageData& src) {
+		set(src);
+		return *this;
+	}
+	CImageData& operator=(const TImageData<float>& src) {
+		set(src);
+		return *this;
+	}
+};
+
+template<typename T>
+T StdDeviation(T* start, T* end) {
+	T sum=0,sum2=0;
+	for (T* s = start; s!=end; ++s) {
+		sum+=*s; sum2+=(*s)*(*s);
+	}
+
+	T invN = 1.0f/(end-start);
+	T mean = sum * invN;
+	return sqrt(sum2 * invN - mean * mean);
+}
+
+
+typedef TImageData<float> ImageData;
+typedef TImageData<double> ImageDatad;
+
+std::vector<float> ComputeRadialBinWindow(int rsteps);
 float ComputeBgCorrectedCOM1D(float *data, int len, float cf=2.0f);
 void ComputeCRP(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src,float mean, float*crpmap=0);
 void ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src, float mean, bool normalize);
 void NormalizeRadialProfile(float* prof, int rsteps);
 void NormalizeZLUT(float *zlut, int numLUTs, int planes, int radialsteps);
-void GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos);
+void GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos, bool useSplineInterp=true, int ovs=4);
 void ApplyPoissonNoise(ImageData& img, float poissonMax, float maxValue=255);
 void ApplyGaussianNoise(ImageData& img, float sigma);
 void WriteComplexImageAsCSV(const char* file, std::complex<float>* d, int w,int h, const char *labels[]=0);
@@ -125,6 +179,7 @@ struct PathSeperator {
 std::string file_ext(const char *f);
 
 ImageData ReadJPEGFile(const char *fn);
+ImageData ReadLUTFile(const char *lutfile);
 int ReadJPEGFile(uchar* srcbuf, int srclen, uchar** data, int* width, int*height);
 void WriteJPEGFile(uchar* data,int w,int h, const char * filename, int quality);
 void FloatToJPEGFile (const char *name, const float* d, int w,int h);

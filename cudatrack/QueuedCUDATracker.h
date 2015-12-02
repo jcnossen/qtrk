@@ -17,6 +17,7 @@
 #include "gpu_utils.h"
 #include "cudaImageList.h"
 
+class CPUTracker;
 
 template<typename T>
 struct cudaImageList;
@@ -78,7 +79,8 @@ public:
 	void GetRadialZLUTSize(int& count, int& planes, int &radialSteps) override;
 	int FetchResults(LocalizationResult* results, int maxResults) override;
 
-	void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, uint flags, int plane) override;
+	void BeginLUT(uint flags) override;
+	void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos) override;
 	void FinalizeLUT() override;
 
 	void EnableRadialZLUTCompareProfile(bool enabled) {}
@@ -187,6 +189,8 @@ protected:
 	bool useTextureCache; // speed up using texture cache. 
 	float gc_offsetFactor, gc_gainFactor;
 	Threads::Mutex gc_mutex;
+	std::vector<float> gc_offset, gc_gain;///cpu size buffers are needed because BuildLUT uses CPU tracking
+	uint zlut_build_flags;
 
 	QI qi;
 	QI qalign;
@@ -203,7 +207,8 @@ protected:
 	Stream* CreateStream(Device* device, int streamIndex);
 	void CopyStreamResults(Stream* s);
 	void StreamUpdateZLUTSize(Stream *s);
-	void CPU_ApplyGainCorrection(Stream *s);
+	void CPU_ApplyOffsetGain(CPUTracker* trk, int beadIndex);
+
 
 public:
 	// Profiling

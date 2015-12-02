@@ -117,6 +117,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="..\cputrack-test\SharedTests.h" />
     <ClInclude Include="..\cputrack\cpu_tracker.h" />
     <ClInclude Include="..\cputrack\DebugResultCompare.h" />
+    <ClInclude Include="..\cputrack\LsqQuadraticFit.h" />
     <ClInclude Include="..\cputrack\QueuedCPUTracker.h" />
     <ClInclude Include="..\cputrack\QueuedTracker.h" />
     <ClInclude Include="..\cputrack\TeLibJpeg\jmemdstsrc.h" />
@@ -134,6 +135,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="..\utils\tinydir.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\cputrack-test\Benchmark.cpp" />
     <ClCompile Include="..\cputrack\BenchmarkLUT.cpp" />
     <ClCompile Include="..\cputrack\cpu_tracker.cpp" />
     <ClCompile Include="..\cputrack\fastjpg.cpp" />
@@ -143,7 +145,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="..\cputrack\TeLibJpeg\jmemsrc.c" />
     <ClCompile Include="..\cputrack\utils.cpp" />
     <ClCompile Include="..\utils\ExtractBeadImages.cpp" />
-    <ClCompile Include="Benchmark.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

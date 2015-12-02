@@ -10,19 +10,21 @@ class SampleFisherMatrix
 	float maxValue;
 
 	// imgpx = ( imgpx - imgmx ) / (2 *delta)
-	void ImgDeriv(ImageData& imgpx, ImageData& imgmx, float delta)
+	template<typename T>
+	void ImgDeriv(TImageData<T>& imgpx, TImageData<T>& imgmx, T delta)
 	{
-		float inv2d = 1.0f/(2*delta);
+		T inv2d = 1.0f/(2*delta);
 		for (int y=0;y<imgpx.w*imgpx.h;y++)
 			imgpx[y] = (imgpx[y] - imgmx[y]) * inv2d;
 	}
 
-	float FisherElem(ImageData& mu, ImageData& muderiv1, ImageData& muderiv2)
+	template<typename T>
+	double FisherElem(TImageData<T>& mu, TImageData<T>& muderiv1, TImageData<T>& muderiv2)
 	{
 		double sum = 0;
 		for (int y=0;y<mu.h;y++) {
 			for (int x=0;x<mu.w;x++)
-				sum += muderiv1.at(x,y) * muderiv2.at(x,y) / mu.at(x,y);
+				sum += (double)muderiv1.at(x,y) * (double) muderiv2.at(x,y) / (1e-5f + (double)mu.at(x,y));
 		}
 		return sum;
 	}
@@ -36,7 +38,10 @@ public:
 	Matrix3X3 Compute(vector3f pos, vector3f delta, ImageData& lut, int w,int h, float zlutMinRadius,float zlutMaxRadius)
 	{
 		return Compute(pos, delta, w,h,[&](ImageData& out, vector3f pos) {
-			GenerateImageFromLUT(&out, &lut, zlutMinRadius, zlutMaxRadius, pos);
+			ImageData tmp = ImageData::alloc(w,h);
+			GenerateImageFromLUT(&tmp, &lut, zlutMinRadius, zlutMaxRadius, pos);
+			out.set(tmp);
+			tmp.free();
 		});
 	}
 
@@ -45,14 +50,14 @@ public:
 		static int t=0;
 
 		// compute derivatives
-		ImageData mu = ImageData::alloc(w,h);
+		auto mu = ImageData::alloc(w,h);
 		imageGenerator(mu, pos);
 
 		float maxImg = mu.mean();
 	
-		ImageData imgpx = ImageData::alloc(w,h);
-		ImageData imgpy = ImageData::alloc(w,h);
-		ImageData imgpz = ImageData::alloc(w,h);
+		auto imgpx = ImageData::alloc(w,h);
+		auto imgpy = ImageData::alloc(w,h);
+		auto imgpz = ImageData::alloc(w,h);
 		imageGenerator(imgpx, vector3f(pos.x+delta.x, pos.y,pos.z));
 		imageGenerator(imgpy, vector3f(pos.x, pos.y+delta.y,pos.z));
 		imageGenerator(imgpz, vector3f(pos.x, pos.y,pos.z+delta.z));
@@ -61,25 +66,15 @@ public:
 //		WriteImageAsCSV("imgpy.csv", imgpy.data, imgpx.w, imgpx.h);
 //		WriteImageAsCSV("imgpz.csv", imgpz.data, imgpx.w, imgpx.h);
 
-		ImageData imgmx = ImageData::alloc(w,h);
-		ImageData imgmy = ImageData::alloc(w,h);
-		ImageData imgmz = ImageData::alloc(w,h);
+		auto imgmx = ImageData::alloc(w,h);
+		auto imgmy = ImageData::alloc(w,h);
+		auto imgmz = ImageData::alloc(w,h);
 		imageGenerator(imgmx, vector3f(pos.x-delta.x, pos.y,pos.z));
 		imageGenerator(imgmy, vector3f(pos.x, pos.y-delta.y,pos.z));
 		imageGenerator(imgmz, vector3f(pos.x, pos.y,pos.z-delta.z));
-//		WriteImageAsCSV("imgmx.csv", imgmx.data, imgpx.w, imgpx.h);
-//		WriteImageAsCSV("imgmy.csv", imgmy.data, imgpx.w, imgpx.h);
-//		WriteImageAsCSV("imgmz.csv", imgmz.data, imgpx.w, imgpx.h);
-
-		if(t==501) {
-//			WriteImageAsCSV("imgmz.csv", imgmz.data, imgpz.w, imgpz.h);
-			WriteJPEGFile("mu_dz500pz.jpg", imgpz);
-			WriteJPEGFile("mu_dz500mz.jpg", imgmz);
-		} 
-		if(t==502) {
-
-			WriteJPEGFile("mu_dz502.jpg", imgpz);
-		}
+		//WriteImageAsCSV("imgmx.csv", imgmx.data, imgpx.w, imgpx.h);
+		//WriteImageAsCSV("imgmy.csv", imgmy.data, imgpx.w, imgpx.h);
+		//WriteImageAsCSV("imgmz.csv", imgmz.data, imgpx.w, imgpx.h);
 
 		ImgDeriv(imgpx, imgmx, delta.x);
 		ImgDeriv(imgpy, imgmy, delta.y);
@@ -109,7 +104,7 @@ public:
 		return fisher;
 	}
 
-	Matrix3X3 ComputeAverage(vector3f pos, int Nsamples, vector3f sampleRange, vector3f delta, int w,int h, std::function<void(ImageData& out, vector3f pos)> imggen)
+	Matrix3X3 ComputeAverageFisher(vector3f pos, int Nsamples, vector3f sampleRange, vector3f delta, int w,int h, std::function<void(ImageData& out, vector3f pos)> imggen)
 	{
 		Matrix3X3* results = new Matrix3X3[Nsamples];
 
@@ -135,7 +130,6 @@ public:
 			accum += results[i];
 		delete[] results;
 
-		// Compute inverse
 		Matrix3X3 matrix = accum;
 		matrix *= 1.0f/Nsamples;
 		return matrix;

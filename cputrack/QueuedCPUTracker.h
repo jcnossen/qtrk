@@ -22,12 +22,14 @@ public:
 	void GetRadialZLUT(float* zlut) override;
 	void GetRadialZLUTSize(int& count ,int& planes, int& rsteps) override;
 	void SetRadialWeights(float* rweights) override;
+	void SetRadialWeights(std::vector<float> weights) { SetRadialWeights(&weights[0]); }
 	void ScheduleLocalization(void* data, int pitch, QTRK_PixelDataType pdt, const LocalizationJob *jobInfo) override;
 
 	void EnableRadialZLUTCompareProfile(bool enabled);
 	void GetRadialZLUTCompareProfile(float* dst); // dst = [count * planes]
 
-	void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, uint flags, int plane) override;
+	void BeginLUT(uint flags);
+	void BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos=0) override;
 	void FinalizeLUT() override;
 
 	void GetImageZLUTSize(int* dims);
@@ -91,7 +93,10 @@ private:
 	float* zlut_cmpprofiles;
 	bool zlut_enablecmpprof;
 	int zlut_count, zlut_planes;
+	uint zlut_buildflags;
+
 	std::vector<float> zcmp;
+	std::vector<float> qi_radialbinweights;
 	float* GetZLUTByIndex(int index) { return &zluts[ index * (zlut_planes*cfg.zlut_radialsteps) ]; }
 	void UpdateZLUTs();
 
@@ -115,6 +120,7 @@ private:
 	void ProcessJob(Thread* th, Job* j);
 
 	void SetTrackerImage(CPUTracker* trk, Job *job);
+	void ApplyOffsetGain(CPUTracker* trk, int beadIndex);
 
 	static void WorkerThreadMain(void* arg);
 };

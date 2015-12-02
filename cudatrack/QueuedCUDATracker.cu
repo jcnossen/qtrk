@@ -48,8 +48,6 @@ Issues:
 #include "gpu_utils.h"
 #include "ImageSampler.h"
 
-#define LSQFIT_FUNC __device__ __host__
-#include "LsqQuadraticFit.h"
 
 #include "Kernels.h"
 #include "DebugResultCompare.h"
@@ -202,6 +200,7 @@ QueuedCUDATracker::QueuedCUDATracker(const QTrkComputedConfig& cc, int batchSize
 	batchesDone = 0;
 	useTextureCache = true;
 	resultCount = 0;
+	zlut_build_flags=0;
 
 	quitScheduler = false;
 	schedulingThread = Threads::Create(SchedulingThreadEntryPoint, this);
@@ -472,8 +471,13 @@ __global__ void AddProfilesToZLUT(float* d_src, int nbeads, int radialsteps, int
 }
 
 
+void QueuedCUDATracker::BeginLUT(uint flags)
+{
+	zlut_build_flags = flags;
+}
 
-void QueuedCUDATracker::BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, uint flags, int plane)
+
+void QueuedCUDATracker::BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos)
 {
 	// Copy to image 
 	Device* d = streams[0]->device;
@@ -497,15 +501,16 @@ void QueuedCUDATracker::BuildLUT(void* data, int pitch, QTRK_PixelDataType pdt, 
 		else
 			trk.SetImage16Bit((ushort*)img_data,pitch);
 
-		vector2f com = trk.ComputeMeanAndCOM();
-		bool bhit;
-		positions[i] = trk.ComputeQI(com, cfg.qi_iterations, cfg.qi_radialsteps, cfg.qi_angstepspq, cfg.qi_angstep_factor, cfg.qi_minradius, cfg.qi_maxradius, bhit);
-		trk.ComputeRadialProfile(&profiles[i * cfg.zlut_radialsteps], cfg.zlut_radialsteps, cfg.zlut_angularsteps, cfg.zlut_minradius, cfg.zlut_maxradius, positions[i], false, 0, true);
-	//	if (i == 2) WriteArrayAsCSVRow("rlut-test.csv", &profiles[i * cfg.zlut_radialsteps], cfg.zlut_radialsteps, plane>0);
+		CPU_ApplyOffsetGain(&trk, i);
 
-/*		for (int r=0;r<cfg.zlut_radialsteps;r++) {
-			zlut_build_buf [i * (cfg.zlut_radialsteps*d->radial_zlut.h) + plane * cfg.zlut_radialsteps + r ] += 
-		}*/
+		if(known_pos)
+			positions[i] = known_pos[i];
+		else {
+			vector2f com = trk.ComputeMeanAndCOM();
+			bool bhit;
+			positions[i] = trk.ComputeQI(com, cfg.qi_iterations, cfg.qi_radialsteps, cfg.qi_angstepspq, cfg.qi_angstep_factor, cfg.qi_minradius, cfg.qi_maxradius, bhit);
+			trk.ComputeRadialProfile(&profiles[i * cfg.zlut_radialsteps], cfg.zlut_radialsteps, cfg.zlut_angularsteps, cfg.zlut_minradius, cfg.zlut_maxradius, positions[i], false, 0, true);
+		}
 	});
 
 	// add to device 0 LUT
@@ -603,7 +608,7 @@ void QueuedCUDATracker::ExecuteBatch(Stream *s)
 		s->images.copyToDevice(s->hostImageBuf.data(), true, s->stream); 
 	}
 
-	if (!d->calib_gain.isEmpty()) {
+	if (!d->calib_gain.isEmpty() || !d->calib_offset.isEmpty()) {
 		dim3 numThreads(16, 16, 2);
 		dim3 numBlocks((cfg.width + numThreads.x - 1 ) / numThreads.x,
 				(cfg.height + numThreads.y - 1) / numThreads.y,
@@ -701,7 +706,7 @@ void QueuedCUDATracker::CopyStreamResults(Stream *s)
 		r.firstGuess =  vector2f( s->com[a].x, s->com[a].y );
 		r.pos = vector3f( s->results[a].x , s->results[a].y, s->results[a].z);
 		r.imageMean = s->imgMeans[a];
-
+		r.pos.z = ZLUTBiasCorrection(s->results[a].z, devices[0]->radial_zlut.h, j.zlutIndex);
 		results.push_back(r);
 	}
 	resultCount+=s->JobCount();
@@ -741,6 +746,35 @@ void QueuedCUDATracker::SetPixelCalibrationImages(float* offset, float* gain)
 	for (uint i=0;i<devices.size();i++) {
 		devices[i]->SetPixelCalibrationImages(offset, gain, cfg.width, cfg.height);
 	}
+
+	// Copy to CPU side buffers for BuildLUT
+	int nelem = devices[0]->radial_zlut.count * cfg.width * cfg.height;
+	if (offset && gc_offset.size()!=nelem) { 
+		gc_offset.resize(nelem);
+		gc_offset.assign(offset,offset+nelem);
+	}
+	if (!offset) gc_offset.clear();
+
+	if (gain && gc_gain.size()!=nelem) {
+		gc_gain.reserve(nelem);
+		gc_gain.assign(gain, gain+nelem);
+	}
+	if (!gain) gc_gain.clear();
+}
+
+
+void QueuedCUDATracker::CPU_ApplyOffsetGain(CPUTracker* trk, int beadIndex)
+{
+	if (!gc_offset.empty() || !gc_gain.empty()) {
+		int index = cfg.width*cfg.height*beadIndex;
+
+		gc_mutex.lock();
+		float gf = gc_gainFactor, of = gc_offsetFactor;
+		gc_mutex.unlock();
+
+		trk->ApplyOffsetGain(gc_offset.empty() ? 0:  &gc_offset[index] , gc_gain.empty() ? 0: &gc_gain[index], of, gf);
+//		if (j->job.frame%100==0)
+	}
 }
 
 void QueuedCUDATracker::SetPixelCalibrationFactors(float offsetFactor, float gainFactor)
@@ -755,17 +789,23 @@ void QueuedCUDATracker::Device::SetPixelCalibrationImages(float* offset, float* 
 {
 	cudaSetDevice(index);
 
-	if (offset == 0) {
-		calib_gain.free();
+	if (offset == 0)
 		calib_offset.free();
-	}
-	else if (radial_zlut.count > 0) {
-		calib_gain = cudaImageListf::alloc(img_width,img_height,radial_zlut.count);
-		calib_offset = cudaImageListf::alloc(img_width,img_height,radial_zlut.count);
+
+	if (gain == 0)
+		calib_gain.free();
+
+	if (radial_zlut.count > 0) {
+
+		if (gain)
+			calib_gain = cudaImageListf::alloc(img_width,img_height,radial_zlut.count);
+
+		if (offset)
+			calib_offset = cudaImageListf::alloc(img_width,img_height,radial_zlut.count);
 
 		for (int j=0;j<radial_zlut.count;j++) {
-			calib_gain.copyImageToDevice(j, &gain[img_width*img_height*j]);
-			calib_offset.copyImageToDevice(j, &offset[img_width*img_height*j]);
+			if (gain) calib_gain.copyImageToDevice(j, &gain[img_width*img_height*j]);
+			if (offset) calib_offset.copyImageToDevice(j, &offset[img_width*img_height*j]);
 		}
 	}
 }

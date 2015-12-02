@@ -21,14 +21,6 @@ void dbgsetlogfile(const char*path)
 	logFilename = path;
 }
 
-vector2f vector2f::random(vector2f center, float R)
-{
-	float ang = rand_uniform<float>() * 2 * 3.141593f;
-	float r = rand_uniform<float>() * R;
-
-	return vector2f(center.x + r*cos(ang), center.y + r*sin(ang));
-}
-
 
 std::string GetLocalModuleFilename()
 {
@@ -235,7 +227,7 @@ float ComputeBgCorrectedCOM1D(float *data, int len, float cf)
 	return moment / (float)sum;
 }
 
-void NormalizeRadialProfile(float* prof, int rsteps)
+void NormalizeRadialProfile(scalar_t * prof, int rsteps)
 {
 	double sum=0.0f;
 	for (int i=0;i<rsteps;i++)
@@ -251,6 +243,21 @@ void NormalizeRadialProfile(float* prof, int rsteps)
 	double invTotalrms = 1.0f/sqrt(rmssum2/rsteps);
 	for (int i=0;i<rsteps;i++)
 		prof[i] *= invTotalrms;
+		
+/*
+	scalar_t minVal = prof[0];
+	for (int i=0;i<rsteps;i++)
+		if(prof[i]<minVal) minVal=prof[i]; 
+
+	float rms=0;
+	for (int i=0;i<rsteps;i++) {
+		prof[i]-=minVal;
+		rms += prof[i]*prof[i];
+	}
+	rms=1.0f/sqrt(rms);
+	for (int i=0;i<rsteps;i++) {
+		prof[i]*=rms;
+	}*/
 }
 
 
@@ -272,6 +279,9 @@ void ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float m
 
 	for (int i=0;i<radialSteps;i++)
 		dst[i]=0.0f;
+
+//	center.x += 0.5f;
+//	center.y += 0.5f;
 
 	bool trace=false;
 	float rstep = (maxradius-minradius) / radialSteps;
@@ -308,39 +318,70 @@ void ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float m
 
 inline float sq(float x) { return x*x; }
 
-void GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos)
+void GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos, bool splineInterp, int oversampleSubdiv)
 {
 //	lut.w = radialcov * ( (image->w/2 * roicov ) - minradius );
 //	lut.w = radialcov * ( maxradius - minradius );
 
-	int iz = std::max(1, std::min(zlut->h-3, (int)pos.z));
-	float weights[4];
-	float fz = pos.z-iz;
-	ComputeBSplineWeights(weights, fz);
 	float radialcov = zlut->w / (maxradius-minradius);
-
-	// Interpolate ZLUT using B-spline weights
 	float* zinterp = (float*)ALLOCA(zlut->w * sizeof(float));
-	for (int r=0;r<zlut->w;r++) {
-		float zlutv = 0;
-		for (int i=0;i<4;i++)
-			zlutv += weights[i] * zlut->at(r, i-1+iz);
-		zinterp[r] = zlutv;
+
+	if (splineInterp) {
+		int iz = std::max(1, std::min(zlut->h-3, (int)pos.z));
+		float weights[4];
+		float fz = pos.z-iz;
+		ComputeBSplineWeights(weights, fz);
+		// Interpolate ZLUT using B-spline weights
+		for (int r=0;r<zlut->w;r++) {
+			float zlutv = 0;
+			for (int i=0;i<4;i++)
+				zlutv += weights[i] * zlut->at(r, i-1+iz);
+			zinterp[r] = zlutv;
+		}
 	}
+	else {
+		// The two Z planes to interpolate between
+		int iz = (int)pos.z;
+		if (iz < 0) 
+			zinterp = zlut->data;
+		else if (iz>=zlut->h-1)
+			zinterp = &zlut->data[ (zlut->h-1)*zlut->w ];
+		else {
+			float* zlut0 = &zlut->data [ (int)pos.z * zlut->w ]; 
+			float* zlut1 = &zlut->data [ ((int)pos.z + 1) * zlut->w ];
+			zinterp = (float*)ALLOCA(sizeof(float)*zlut->w);
+			for (int r=0;r<zlut->w;r++) 
+				zinterp[r] = Lerp(zlut0[r], zlut1[r], pos.z-iz);
+		}
+	}
+
+	int oversampleWidth=oversampleSubdiv,oversampleHeight=oversampleSubdiv;
+	float oxstep = 1.0f / oversampleWidth;
+	float oystep = 1.0f / oversampleHeight;
 
 	for (int y=0;y<image->h;y++)
 		for (int x=0;x<image->w;x++) 
 		{
-			float pixr = sqrtf( sq(x-pos.x) + sq(y-pos.y) );
-			float r = (pixr - minradius) * radialcov;
+			float s = 0.0f;
 
-			if (r > zlut->w-2)
-				r = zlut->w-2;
-			if (r < 0) r = 0;
+			for (int ox=0;ox<oversampleWidth;ox++)
+				for (int oy=0;oy<oversampleHeight;oy++) {
 
-			int i=(int)r;
-			float v = Lerp(zinterp[i], zinterp[i+1], r-i);
-			image->at(x,y) = v; 
+					float X = x+(ox+0.5f)*oxstep - pos.x - 0.5f;
+					float Y = y+(oy+0.5f)*oystep - pos.y - 0.5f;
+
+					float pixr = sqrtf(X*X+Y*Y);
+					float r = (pixr - minradius) * radialcov;
+
+					if (r > zlut->w-2)
+						r = zlut->w-2;
+					if (r < 0) r = 0;
+
+					int i=(int)r;
+					s += Lerp(zinterp[i], zinterp[i+1], r-i);
+				}
+		
+			image->at(x,y) = s/(oversampleWidth*oversampleHeight); 
 		}
 }
 
@@ -374,7 +415,7 @@ void ApplyPoissonNoise(ImageData& img, float poissonMax, float maxval)
 	float ratio = maxval / poissonMax;
 
 	for (int x=0;x<img.numPixels();x++) {
-		img[x] = rand_poisson<float>(poissonMax*img[x]) * ratio;
+		img[x] = (int)(rand_poisson<float>(poissonMax*img[x]) * ratio );
 	}
 }
 
@@ -442,7 +483,7 @@ void WriteTrace(std::string filename, vector3f* results, int nResults)
 
 	for (int i=0;i<nResults;i++)
 	{
-		fprintf(f, "%f\t%f\t%f\n", results[i].x, results[i].y, results[i].z);
+		fprintf(f, "%.7f\t%.7f\t%.7f\n", results[i].x, results[i].y, results[i].z);
 	}
 
 	fclose(f);
@@ -453,7 +494,7 @@ void WriteArrayAsCSVRow(const char *file, float* d, int len, bool append)
 	FILE *f = fopen(file, append?"a":"w");
 	if(f) {
 		for (int i=0;i<len;i++)
-			fprintf(f, "%f\t", d[i]);
+			fprintf(f, "%.7f\t", d[i]);
 
 		fprintf(f, "\n");
 		fclose(f);
@@ -617,15 +658,50 @@ int NearestPowerOf3(int v)
 }
 
 
-std::vector<float> ComputeStetsonWindow(int rsteps)
+std::vector<float> ComputeRadialBinWindow(int rsteps)
 {
 	std::vector<float> wnd(rsteps);
-	for (int x=0;x<rsteps;x++) {
-		float t2=rsteps/5.0f;
-		float t1=rsteps/1.0f;
-		float rm=rsteps-1;
-		float fall=1-expf( -(rm-x)*(rm-x)/t2 ), rise=1-expf(-x*x/t1);
-		wnd[x]=rise*fall*x/(float)rsteps*2;
+	for (int i=0;i<rsteps;i++) {
+		float x = i/(float)rsteps;
+		float t2 = 0.05f; 
+		float t1 = 0.01f;
+		float fall = 1.0f-expf(-sq(1-x)/t2);
+		float rise = 1.0f-expf(-sq(x)/t1);
+		wnd[i] = sqrtf(fall*rise*x*2);
 	}
 	return wnd;
 }
+
+
+ImageData ReadLUTFile(const char *lutfile)
+{
+	PathSeperator sep(lutfile);
+	if(sep.extension == "jpg") {
+		return ReadJPEGFile(lutfile);
+	}
+	else {
+		std::string fn = lutfile;
+		fn = std::string(fn.begin(), fn.begin()+fn.find('#'));
+		std::string num( ++( sep.extension.begin() + sep.extension.find('#') ), sep.extension.end());
+		int lutIndex = atoi(num.c_str());
+
+		int nbeads, nplanes, nsteps;
+		FILE *f = fopen(fn.c_str(), "rb");
+
+		if (!f)
+			throw std::runtime_error("Can't open " + fn);
+
+		fread(&nbeads, 4, 1, f);
+		fread(&nplanes, 4, 1, f);
+		fread(&nsteps, 4, 1, f);
+
+
+		fseek(f, 12 + 4* (nsteps*nplanes * lutIndex), SEEK_SET);
+		ImageData lut = ImageData::alloc(nsteps,nplanes);
+		fread(lut.data, 4, nsteps*nplanes,f);
+		fclose(f);
+		lut.normalize();
+		return lut;
+	}
+}
+

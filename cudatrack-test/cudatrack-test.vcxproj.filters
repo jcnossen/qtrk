@@ -23,6 +23,7 @@
     <ClInclude Include="..\utils\tinydir.h" />
     <ClInclude Include="..\cudatrack\QI.h" />
     <ClInclude Include="..\cudatrack\QI_impl.h" />
+    <ClInclude Include="..\cputrack\LsqQuadraticFit.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="test.cu" />
@@ -51,7 +52,7 @@
     <ClCompile Include="..\cputrack\QueuedTracker.cpp" />
     <ClCompile Include="..\cputrack\QueuedCPUTracker.cpp" />
     <ClCompile Include="..\utils\ExtractBeadImages.cpp" />
-    <ClCompile Include="Benchmark.cpp" />
     <ClCompile Include="..\cputrack\BenchmarkLUT.cpp" />
+    <ClCompile Include="..\cputrack-test\Benchmark.cpp" />
   </ItemGroup>
 </Project>

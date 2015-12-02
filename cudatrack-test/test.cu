@@ -28,6 +28,8 @@
 #include <thrust/reduce.h>
 #include <thrust/functional.h>
 
+#include "FisherMatrix.h"
+
 void BenchmarkParams();
 
 std::string getPath(const char *file)
@@ -156,7 +158,7 @@ void QTrkCompareTest()
 			GenerateTestImage(img, center.x, center.y, s, 0.0f);
 			WriteJPEGFile("qtrkzlutimg.jpg", img);
 
-			qtrk.BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x);
+			qtrk.BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x, 0);
 			if (cpucmp) 
 				qtrkcpu.BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x);
 		}
@@ -443,20 +445,17 @@ SpeedInfo SpeedCompareTest(int w, LocalizeModeEnum locMode, bool haveZLUT, int q
 
 void ProfileSpeedVsROI(LocalizeModeEnum locMode, const char *outputcsv, bool haveZLUT, int qi_iterations)
 {
-	int N=24;
-	float* values = new float[N*3];
+	std::vector<float> values;
 
-	for (int i=0;i<N;i++) {
-		int roi = 40+i*5;
+	for (int roi=20;roi<=180;roi+=10) { // same as BenchmarkROIAccuracy()
 		SpeedInfo info = SpeedCompareTest(roi, locMode, haveZLUT, qi_iterations);
-		values[i*3+0] = roi;
-		values[i*3+1] = info.speed_cpu;
-		values[i*3+2] = info.speed_gpu;
+		values.push_back( roi);
+		values.push_back(info.speed_cpu);
+		values.push_back( info.speed_gpu);
 	}
 
 	const char *labels[] = { "ROI", "CPU", "CUDA" };
-	WriteImageAsCSV(outputcsv, values, 3, N, labels);
-	delete[] values;
+	WriteImageAsCSV(outputcsv, &values[0], 3, values.size()/3, labels);
 }
 
 
@@ -650,7 +649,6 @@ void QICompare(const char *lutfile )
 }
 
 
-
 void TestBenchmarkLUT()
 {
 	BenchmarkLUT bml("refbeadlut.jpg");
@@ -703,11 +701,16 @@ int CmdLineRun(int argc, char*argv[])
 	check_arg(args, "count", &count);
 
 	std::string outputfile, fixlutfile, inputposfile, bmlutfile, rescaledlutfile;
+	std::string radialWeightsFile;
 	check_strarg(args, "output", &outputfile);
 	check_strarg(args, "fixlut", &fixlutfile);
 	check_strarg(args, "bmlut", &bmlutfile);
 	check_strarg(args, "inputpos", &inputposfile);
 	check_strarg(args, "regenlut", &rescaledlutfile);
+	check_strarg(args, "radweights", &radialWeightsFile);
+
+	std::string crlboutput;
+	check_strarg(args, "crlb", &crlboutput);
 
 	std::vector< vector3f > inputPos;
 	if (!inputposfile.empty()) {
@@ -728,12 +731,11 @@ int CmdLineRun(int argc, char*argv[])
 	check_arg(args, "qi_angstep_factor", &cfg.qi_angstep_factor);
 	check_arg(args, "downsample", &cfg.downsample);
 
-	int zlutAlign=0, fourierLUT=0;
+	int zlutAlign=0;
 	check_arg(args, "zlutalign", &zlutAlign);
-	check_arg(args, "fourierlut", &fourierLUT);
 
-	float elecperbit = 15;
-	check_arg(args, "epb", &elecperbit);
+	float pixelmax = 28 * 255;
+	check_arg(args, "pixelmax", &pixelmax);
 
 	std::string lutsmpfile;
 	check_strarg(args, "lutsmpfile", &lutsmpfile);
@@ -752,26 +754,21 @@ int CmdLineRun(int argc, char*argv[])
 	{
 		lut = ReadJPEGFile(fixlutfile.c_str());
 
-		if (fourierLUT) {
-
+		if(!rescaledlutfile.empty()) {
+			// rescaling allowed
+			ImageData newlut;
+			ResampleLUT(qtrk, &lut, lut.h, &newlut, rescaledlutfile.c_str()); 
+			lut.free();
+			lut=newlut;
 		}
-		else {
-			if(!rescaledlutfile.empty()) {
-				// rescaling allowed
-				ImageData newlut;
-				ResampleLUT(qtrk, &lut, lut.h, &newlut, rescaledlutfile.c_str()); 
-				lut.free();
-				lut=newlut;
-			}
-			else if (lut.w != qtrk->cfg.zlut_radialsteps) {
-				lut.free();
-				dbgprintf("Invalid LUT size (%d). Expecting %d radialsteps\n", lut.w, qtrk->cfg.zlut_radialsteps);
-				delete qtrk;
-				return -1;
-			}
-
-			qtrk->SetRadialZLUT(lut.data,1,lut.h);
+		else if (lut.w != qtrk->cfg.zlut_radialsteps) {
+			lut.free();
+			dbgprintf("Invalid LUT size (%d). Expecting %d radialsteps\n", lut.w, qtrk->cfg.zlut_radialsteps);
+			delete qtrk;
+			return -1;
 		}
+
+		qtrk->SetRadialZLUT(lut.data,1,lut.h);
 	}
 	else
 	{
@@ -798,43 +795,73 @@ int CmdLineRun(int argc, char*argv[])
 		}
 	}
 
+	if (!radialWeightsFile.empty())
+	{
+		auto rwd = ReadCSV(radialWeightsFile.c_str());
+		std::vector<float> rw(rwd.size());
+		if (rw.size() == qtrk->cfg.zlut_radialsteps)
+			qtrk->SetRadialWeights(&rw[0]);
+		else  {
+			dbgprintf("Invalid # radial weights");
+			delete qtrk;
+		}
+	}
+
 	std::vector<ImageData> imgs (inputPos.size());
+
+	std::vector<vector3f> crlb(inputPos.size());
 
 	for (int i=0;i<inputPos.size();i++) {
 		imgs[i]=ImageData::alloc(cfg.width, cfg.height);
 		//vector3f pos = centerpos + range*vector3f(rand_uniform<float>()-0.5f, rand_uniform<float>()-0.5f, rand_uniform<float>()-0.5f)*2;
 
 		auto p = inputPos[i];
-		if (!bmlut.lut_w)
-			GenerateImageFromLUT(&imgs[i], &lut, qtrk->cfg.zlut_minradius, qtrk->cfg.zlut_maxradius, p);
-		else
+		if (!bmlut.lut_w) {
+			GenerateImageFromLUT(&imgs[i], &lut, qtrk->cfg.zlut_minradius, qtrk->cfg.zlut_maxradius, p, false);
+			if (!crlboutput.empty()) {
+				SampleFisherMatrix sfm(pixelmax);
+				crlb[i]=sfm.Compute(p, vector3f(1,1,1)*0.001f, lut, qtrk->cfg.width,qtrk->cfg.height, qtrk->cfg.zlut_minradius, qtrk->cfg.zlut_maxradius).Inverse().diag();
+			}
+		} else
 			bmlut.GenerateSample(&imgs[i], p, qtrk->cfg.zlut_minradius, qtrk->cfg.zlut_maxradius);
 		imgs[i].normalize();
-		if (elecperbit > 0) ApplyPoissonNoise(imgs[i], 255 * elecperbit, 255);
+		if (pixelmax > 0) ApplyPoissonNoise(imgs[i], pixelmax, 255);
 		if(i==0 && !lutsmpfile.empty()) WriteJPEGFile(lutsmpfile.c_str(), imgs[i]);
 	}
 
-	qtrk->SetLocalizationMode((LocMode_t)(LT_QI|LT_LocalizeZ| LT_NormalizeProfile | (zlutAlign ? LT_ZLUTAlign : 0)));
+	int locMode = LT_LocalizeZ | LT_NormalizeProfile | LT_LocalizeZWeighted;
+	if (qtrk->cfg.qi_iterations > 0) 
+		locMode |= LT_QI;
+	if (zlutAlign)
+		locMode |= LT_ZLUTAlign;
+
+	qtrk->SetLocalizationMode((LocMode_t)locMode);
 	double tstart=GetPreciseTime();
 
 	int img=0;
 	for (int i=0;i<inputPos.size();i++)
 	{
 		LocalizationJob job(i, 0, 0, 0);
-		qtrk->ScheduleLocalization((uchar*)imgs[i].data, sizeof(float)*cfg.width, QTrkFloat, &job);
+		qtrk->ScheduleImageData(&imgs[i], &job);
 	}
 
 	WaitForFinish(qtrk, inputPos.size());
 	double tend = GetPreciseTime();
 
-	vector3f* results=new vector3f[inputPos.size()];
+	std::vector<vector3f> results(inputPos.size());
 	for (int i=0;i<inputPos.size();i++) {
 		LocalizationResult r;
 		qtrk->FetchResults(&r,1);
 		results[r.job.frame]=r.pos;
 	}
-	WriteTrace(outputfile, results, inputPos.size());
-	delete[] results;
+	vector3f meanErr, stdevErr;
+	MeanStDevError(inputPos, results, meanErr, stdevErr);
+	dbgprintf("Mean err X=%f,Z=%f. St deviation: X=%f,Z=%f\n", meanErr.x,meanErr.y,stdevErr.x,stdevErr.z);
+
+	if (!crlboutput.empty())
+		WriteTrace(crlboutput, &crlb[0], crlb.size());
+
+	WriteTrace(outputfile, &results[0], inputPos.size());
 	
 	if (lut.data) lut.free();
 	delete qtrk;
@@ -842,50 +869,57 @@ int CmdLineRun(int argc, char*argv[])
 	return 0;
 }
 
+
 int main(int argc, char *argv[])
 {
-	listDevices();
+	//listDevices();
 
 	if (argc > 1)
 	{
 		return CmdLineRun(argc, argv);
 	}
 
+	try {
+	//	TestBenchmarkLUT();
+	//	testLinearArray();
+	//	TestTextureFetch();
+	//	TestGauss2D(true);
+	//	MultipleLUTTest();
 
-//	TestBenchmarkLUT();
-//	testLinearArray();
-//	TestTextureFetch();
-	TestGauss2D(true);
-//	MultipleLUTTest();
+	//	TestSurfaceReadWrite();
+	//	TestImage4D();
+	//	TestImage4DMemory();
+	//	TestImageLUT("../cputrack-test/lut000.jpg");
+	//	TestRadialLUTGradientMethod();
 
-//	TestSurfaceReadWrite();
-//	TestImage4D();
-//	TestImage4DMemory();
-//	TestImageLUT("../cputrack-test/lut000.jpg");
-	//TestRadialLUTGradientMethod();
 
-//	BenchmarkParams();
+//		BenchmarkParams();
 
-//	BasicQTrkTest();
-//	TestCMOSNoiseInfluence<QueuedCUDATracker>("../cputrack-test/lut000.jpg");
+	//	BasicQTrkTest();
+	//	TestCMOSNoiseInfluence<QueuedCUDATracker>("../cputrack-test/lut000.jpg");
 
-#ifdef QI_DEBUG
-	QICompare("../cputrack-test/lut000.jpg");
-#endif
+	#ifdef QI_DEBUG
+		QICompare("../cputrack-test/lut000.jpg");
+	#endif
 
-//CompareAccuracy("../cputrack-test/lut000.jpg");
-//QTrkCompareTest();
+		//CompareAccuracy("../cputrack-test/lut000.jpg");
+		//QTrkCompareTest();
 
-	ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com.txt", false, 0);
-	ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com-z.txt", true, 0);
-	for (int qi_it=1;qi_it<=4;qi_it++) {
-		ProfileSpeedVsROI(LT_QI, SPrintf("speeds-qi-%d-iterations.txt",qi_it).c_str(), true, qi_it);
+		ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com.txt", false, 0);
+		ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com-z.txt", true, 0);
+		ProfileSpeedVsROI(LT_XCor1D, "speeds-xcor.txt", true, 0);
+		for (int qi_it=1;qi_it<=4;qi_it++) {
+			ProfileSpeedVsROI(LT_QI, SPrintf("speeds-qi-%d-iterations.txt",qi_it).c_str(), true, qi_it);
+		}
+
+		/*auto info = SpeedCompareTest(80, false);
+		auto infogc = SpeedCompareTest(80, true);
+		dbgprintf("[gainc=false] CPU: %f, GPU: %f\n", info.speed_cpu, info.speed_gpu); 
+		dbgprintf("[gainc=true] CPU: %f, GPU: %f\n", infogc.speed_cpu, infogc.speed_gpu); 
+		*/
+
+	} catch (const std::exception& e) {
+		dbgprintf("Exception: %s\n", e.what());
 	}
-
-	/*auto info = SpeedCompareTest(80, false);
-	auto infogc = SpeedCompareTest(80, true);
-	dbgprintf("[gainc=false] CPU: %f, GPU: %f\n", info.speed_cpu, info.speed_gpu); 
-	dbgprintf("[gainc=true] CPU: %f, GPU: %f\n", infogc.speed_cpu, infogc.speed_gpu); 
-	*/
 	return 0;
 }

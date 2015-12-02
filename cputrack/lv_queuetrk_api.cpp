@@ -187,30 +187,36 @@ CDLL_EXPORT void DLL_CALLCONV qtrk_set_pixel_calib_factors(QueuedTracker* qtrk, 
 CDLL_EXPORT void DLL_CALLCONV qtrk_set_pixel_calib(QueuedTracker* qtrk, LVArray3D<float>** offset, LVArray3D<float>** gain, ErrorCluster* e)
 {
 	if (ValidateTracker(qtrk, e, "set pixel calibration images")) {
-		int count ,planes, radialSteps;
+		int count, planes, radialSteps;
 		qtrk->GetRadialZLUTSize(count, planes, radialSteps);
 
-		if( (*offset)->dimSizes[0] == 0 ){
-			qtrk->SetPixelCalibrationImages(0,0);
-			return;
+		float *offset_data = 0, *gain_data = 0;
+
+		if((*offset)->dimSizes[0] != 0) {
+			if (qtrk->cfg.width != (*offset)->dimSizes[2] || qtrk->cfg.height != (*offset)->dimSizes[1]) {
+				ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Offset images passed with invalid dimension (%d,%d)", (*offset)->dimSizes[2], (*offset)->dimSizes[1]));
+				return;
+			}
+			if (count != (*offset)->dimSizes[0]) {
+				ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Expecting offset to have %d images (same as ZLUT). %d given", count, (*offset)->dimSizes[0]));
+				return;
+			}
+			offset_data = (*offset)->elem;
 		}
 
-		if (qtrk->cfg.width != (*gain)->dimSizes[2] || qtrk->cfg.height != (*gain)->dimSizes[1]) {
-			ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Gain images passed with invalid dimension (%d,%d)", (*gain)->dimSizes[2], (*gain)->dimSizes[1]));
-			return;
+		if((*gain)->dimSizes[0] != 0) {
+			if (qtrk->cfg.width != (*gain)->dimSizes[2] || qtrk->cfg.height != (*gain)->dimSizes[1]) {
+				ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Gain images passed with invalid dimension (%d,%d)", (*gain)->dimSizes[2], (*gain)->dimSizes[1]));
+				return;
+			}
+			if (count != (*gain)->dimSizes[0]) {
+				ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Expecting gain to have %d images (same as ZLUT). %d given", count, (*gain)->dimSizes[0]));
+				return;
+			}
+			gain_data = (*gain)->elem;
 		}
 
-		if (qtrk->cfg.width != (*offset)->dimSizes[2] || qtrk->cfg.height != (*offset)->dimSizes[1]) {
-			ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Offset images passed with invalid dimension (%d,%d)", (*offset)->dimSizes[2], (*offset)->dimSizes[1]));
-			return;
-		}
-
-		if (count != (*offset)->dimSizes[0] || count != (*gain)->dimSizes[0]) {
-			ArgumentErrorMsg(e, SPrintf("set_pixel_calib: Expecting gain/offset to have %d images (same as ZLUT). %d/%d given", count, (*gain)->dimSizes[0], (*offset)->dimSizes[0]));
-			return;
-		}
-
-		qtrk->SetPixelCalibrationImages( (*offset)->elem, (*gain)->elem );
+		qtrk->SetPixelCalibrationImages(offset_data, gain_data);
 	}
 }
 
@@ -366,7 +372,7 @@ CDLL_EXPORT void qtrk_build_lut_plane(QueuedTracker* qtrk, LVArray3D<float> **da
 			return;
 		}
 
-		qtrk->BuildLUT( (*data)->elem, sizeof(float*) * qtrk->cfg.width, QTrkFloat, false, plane);
+		qtrk->BuildLUT( (*data)->elem, sizeof(float*) * qtrk->cfg.width, QTrkFloat, plane);
 	}
 }
 
@@ -448,6 +454,32 @@ CDLL_EXPORT int qtrk_idle(QueuedTracker* qtrk, ErrorCluster* e)
 	return 0;
 }
 
+CDLL_EXPORT void qtrk_compute_zlut_bias_table(QueuedTracker* qtrk, int bias_planes, LVArray2D<float>** lvresult, int smpPerPixel, int useSplineInterp,ErrorCluster* e)
+{
+	if(ValidateTracker(qtrk, e,"compute_zlut_bias_table")) {
+		CImageData result;
+		qtrk->ComputeZBiasCorrection(bias_planes, &result, smpPerPixel, useSplineInterp!=0);
+
+		ResizeLVArray2D(lvresult, result.h, result.w);
+		result.copyTo ( (*lvresult)->elem );
+	}
+}
+
+CDLL_EXPORT void qtrk_set_zlut_bias_table(QueuedTracker* qtrk, LVArray2D<float>** biastbl, ErrorCluster* e)
+{
+	if (ValidateTracker(qtrk, e,"set zlut bias table")) {
+		int numbeads,planes,radialsteps;
+		qtrk->GetRadialZLUTSize(numbeads, planes, radialsteps);
+
+		if ((*biastbl)->dimSizes[1] != numbeads) {
+			ArgumentErrorMsg(e, SPrintf( "Bias table should be [numbeads] high and [biasplanes] wide. Expected #beads=%d", numbeads) );
+		}
+		else {
+			qtrk->SetZLUTBiasCorrection( ImageData( (*biastbl)->elem, (*biastbl)->dimSizes[0], (*biastbl)->dimSizes[1] ) );
+		}
+	}
+}
+
 CDLL_EXPORT void DLL_CALLCONV qtrk_generate_gaussian_spot(LVArray2D<float>** image, vector2f* pos, float sigma, float I0, float Ibg, int applyNoise)
 {
 	ImageData img((*image)->elem, (*image)->dimSizes[1], (*image)->dimSizes[0]);
@@ -486,26 +518,30 @@ CDLL_EXPORT void qtrk_get_profile_report(QueuedTracker* qtrk, LStrHandle str)
 
 
 CDLL_EXPORT void qtrk_compute_fisher(LVArray2D<float> **lut, QTrkSettings* cfg, vector3f* pos, LVArray2D<float> ** fisherMatrix, 
-		LVArray2D<float> ** inverseMatrix, vector3f* xyzVariance, int Nsamples, float lutIntensityScale)
+		LVArray2D<float> ** inverseMatrix, vector3f* xyzVariance, int Nsamples, float maxPixelValue)
 {
 	QTrkComputedConfig cc (*cfg);
-	LUTFisherMatrix fm( (*lut)->elem, cc.zlut_radialsteps, (*lut)->dimSizes[1], cc.width, cc.height, cc.zlut_minradius, cc.zlut_maxradius, lutIntensityScale );
-	fm.Compute(*pos, Nsamples, *xyzVariance);
-
+	ImageData lutImg( (*lut)->elem, (*lut)->dimSizes[1], (*lut)->dimSizes[0] );
+	SampleFisherMatrix fm(maxPixelValue);
+	Matrix3X3 mat = fm.ComputeAverageFisher(*pos, Nsamples, vector3f(1,1,1), vector3f(1,1,1)*0.001f, cfg->width, cfg->height, [&](ImageData&out, vector3f pos) {
+		GenerateImageFromLUT(&out, &lutImg, cc.zlut_minradius,cc.zlut_maxradius, pos);
+	});
+	
 	if (fisherMatrix) {
 		ResizeLVArray2D( fisherMatrix, 3, 3);
 		for (int i=0;i<9;i++)
-			(*fisherMatrix)->elem[i] = fm.matrix[i];
+			(*fisherMatrix)->elem[i] = mat[i];
 	}
 
 	if (inverseMatrix) {
+		Matrix3X3 inv = mat.Inverse();
 		ResizeLVArray2D( inverseMatrix, 3, 3);
 		for (int i=0;i<9;i++)
-			(*inverseMatrix)->elem[i] = fm.inverse[i];
+			(*inverseMatrix)->elem[i] = inv[i];
 	}
 
 	if (xyzVariance)
-		*xyzVariance = fm.MinVariance();
+		*xyzVariance = mat.Inverse().diag();
 }
 
 
@@ -573,7 +609,7 @@ CDLL_EXPORT void qtrk_simulate_tracking(QueuedTracker* qtrk, int nsmp, int beadI
 			vector3f pos = *centerPos + *range * vector3f(rand_uniform<float>(), rand_uniform<float>(), rand_uniform<float>());
 			positions[i]=pos;
 			GenerateImageFromLUT( &img, &zlut, qtrk->cfg.zlut_minradius, qtrk->cfg.zlut_maxradius, pos);
-			ApplyPoissonNoise(img, 
+			ApplyPoissonNoise(img, photonsPerWell);
 			qtrk->ScheduleLocalization((uchar*)img.data, sizeof(float)*img.w, QTrkFloat,i,i,0,beadIndex);
 		}
 

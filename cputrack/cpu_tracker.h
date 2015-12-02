@@ -36,7 +36,7 @@ public:
 	// The ZLUT system stores 'zlut_count' number of 2D zlut's, so every bead can be tracked with its own unique ZLUT.
 	float* zluts; // size: zlut_planes*zlut_count*zlut_res,		indexing: zlut[index * (zlut_planes * zlut_res) + plane * zlut_res + r]
 	bool zlut_memoryOwner; // is this instance the owner of the zluts memory, or is it external?
-	int zlut_planes, zlut_res, zlut_count, zlut_angularSteps; 
+	int zlut_planes, zlut_res, zlut_count; 
 	float zlut_minradius, zlut_maxradius;
 	bool zlut_useCorrelation;
 	std::vector<float> zlut_radialweights;
@@ -67,7 +67,8 @@ public:
 	bool KeepInsideBoundaries(vector2f *center, float radius);
 	bool CheckBoundaries(vector2f center, float radius);
 	vector2f ComputeXCorInterpolated(vector2f initial, int iterations, int profileWidth, bool& boundaryHit);
-	vector2f ComputeQI(vector2f initial, int iterations, int radialSteps, int angularStepsPerQuadrant, float angStepIterationFactor, float minRadius, float maxRadius, bool& boundaryHit);
+	vector2f ComputeQI(vector2f initial, int iterations, int radialSteps, int angularStepsPerQuadrant, 
+		float angStepIterationFactor, float minRadius, float maxRadius, bool& boundaryHit, float* radialweights=0);
 
 	struct Gauss2DResult {
 		vector2f pos;
@@ -89,11 +90,11 @@ public:
 
 	vector2f ComputeMeanAndCOM(float bgcorrection=0.0f);
 	void ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, bool crp, bool* boundaryHit=0, bool normalize=true);
-	void ComputeQuadrantProfile(scalar_t* dst, int radialSteps, int angularSteps, int quadrant, float minRadius, float maxRadius, vector2f center);
+	void ComputeQuadrantProfile(scalar_t* dst, int radialSteps, int angularSteps, int quadrant, float minRadius, float maxRadius, vector2f center, float* radialWeights=0);
 
 	float ComputeZ(vector2f center, int angularSteps, int zlutIndex, bool* boundaryHit=0, float* profile=0, float* cmpprof=0, bool normalizeProfile=true)
 	{
-		float* prof= ALLOCA_ARRAY(float, zlut_res);
+		float* prof = profile ? profile : ALLOCA_ARRAY(float, zlut_res);
 		ComputeRadialProfile(prof,zlut_res,angularSteps, zlut_minradius, zlut_maxradius, center, false, boundaryHit, normalizeProfile);
 		return LUTProfileCompare(prof, zlutIndex, cmpprof, LUTProfMaxQuadraticFit);
 	}
@@ -102,9 +103,12 @@ public:
 	void FourierRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius);
 
 	void Normalize(float *image=0);
-	void SetRadialZLUT(float* data, int planes, int res, int num_zluts, float minradius, float maxradius, int angularSteps, bool copyMemory, bool useCorrelation, float* radialweights=0);
-	enum LUTProfileMaxComputeMode { LUTProfMaxQuadraticFit, LUTProfMaxSplineFit };
-	float LUTProfileCompare(float* profile, int zlutIndex, float* cmpProf, LUTProfileMaxComputeMode maxPosMethod);
+	void SetRadialZLUT(float* data, int planes, int res, int num_zluts, float minradius, float maxradius, bool copyMemory, bool useCorrelation);
+	void SetRadialWeights(float *w);
+	enum LUTProfileMaxComputeMode { LUTProfMaxQuadraticFit, LUTProfMaxSplineFit, LUTProfMaxSimpleInterp };
+	float LUTProfileCompare(float* profile, int zlutIndex, float* cmpProf, LUTProfileMaxComputeMode maxPosMethod, float* lsqfittedcurve=0, int *maxPos=0);
+	float LUTProfileCompareAdjustedWeights(float* rprof, int zlutIndex, float z_estim);
+
 	float* GetDebugImage() { return debugImage; }
 
 	void ApplyOffsetGain(float *offset, float *gain, float offsetFactor, float gainFactor);
