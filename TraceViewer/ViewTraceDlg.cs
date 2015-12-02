@@ -394,6 +394,11 @@ namespace TraceViewer
 			if (checkUseRef.Checked && txtRefBead.Text.Length > 0)
 			{
 				refBead = int.Parse(txtRefBead.Text);
+				if (refBead >= traces[0].frames[0].positions.Length)
+				{
+					refBead = 0;
+					txtRefBead.Text = "0";
+				}
 			}
 
 			for (int i = 0; i < beads.Length; i++)
