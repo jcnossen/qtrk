@@ -47,9 +47,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Single|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSDK_IncludePath);</IncludePath>
-    <TargetName>qtrkd</TargetName>
+    <TargetName>qtrk</TargetName>
     <TargetExt>$(TargetExt)</TargetExt>
-    <OutDir>$(ProjectDir)/../bin</OutDir>
+    <OutDir>$(ProjectDir)/../QTrkDotNet/QTrkDLLs/debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Single|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -60,7 +60,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Single|Win32'">
     <TargetName>qtrk</TargetName>
     <TargetExt>$(TargetExt)</TargetExt>
-    <OutDir>$(ProjectDir)/../bin</OutDir>
+    <OutDir>$(ProjectDir)/../QTrkDotNet/QTrkDLLs/release</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Single|Win32'">
     <ClCompile>

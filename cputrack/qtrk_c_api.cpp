@@ -1,6 +1,16 @@
 #include "std_incl.h"
 #include "QueuedTracker.h"
 
+CDLL_EXPORT void DLL_CALLCONV TestDLLCallConv(int a)
+{
+
+}
+
+CDLL_EXPORT void DLL_CALLCONV QTrkGetDefaultConfig(QTrkSettings* cfg)
+{
+	*cfg = QTrkSettings();
+}
+
 
 CDLL_EXPORT QueuedTracker* DLL_CALLCONV QTrkCreateInstance(QTrkSettings *cfg)
 {
