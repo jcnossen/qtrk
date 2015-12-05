@@ -51,6 +51,7 @@ public:
 	// Set radial weights used for comparing LUT profiles, zcmp has to have 'zlut_radialsteps' elements
 	virtual void SetRadialWeights(float* zcmp) = 0;
 
+	// allows to obtain the matching profile between all the different Radial ZLUT planes and the track bead profile
 	virtual void EnableRadialZLUTCompareProfile(bool enabled) = 0;
 	virtual void GetRadialZLUTCompareProfile(float* dst) = 0; // dst = [count * planes]
 

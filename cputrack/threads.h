@@ -42,7 +42,7 @@ struct Threads
 
 #else
 
-#include <Windows.h>
+#include <windows.h>
 #undef AddJob
 #undef Sleep
 #undef max

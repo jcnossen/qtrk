@@ -147,6 +147,11 @@ CDLL_EXPORT void DLL_CALLCONV QTrkFreeInstance(QueuedTracker* qtrk);
 // C API, mainly intended to allow binding to .NET
 CDLL_EXPORT void DLL_CALLCONV QTrkSetLocalizationMode(QueuedTracker* qtrk, LocMode_t locType);
 
+	// These are per-bead! So both gain and offset are sized [width*height*numbeads], similar to ZLUT
+	// result=gain*(pixel+offset)
+CDLL_EXPORT void DLL_CALLCONV QTrkSetPixelCalibrationImages(QueuedTracker* qtrk, float* offset, float* gain);
+CDLL_EXPORT void DLL_CALLCONV QTrkSetPixelCalibrationFactors(float offsetFactor, float gainFactor);
+
 // Frame and timestamp are ignored by tracking code itself, but usable for the calling code
 // Pitch: Distance in bytes between two successive rows of pixels (e.g. address of (0,0) -  address of (0,1) )
 // ZlutIndex: Which ZLUT to use for ComputeZ/BuildZLUT
@@ -156,20 +161,34 @@ CDLL_EXPORT void DLL_CALLCONV QTrkFlush(QueuedTracker* qtrk); // stop waiting fo
 
 // Schedule an entire frame at once, allowing for further optimizations
 CDLL_EXPORT int DLL_CALLCONV QTrkScheduleFrame(QueuedTracker* qtrk, void *imgptr, int pitch, int width, int height, ROIPosition *positions, int numROI, QTRK_PixelDataType pdt, const LocalizationJob *jobInfo);
-	
+
+CDLL_EXPORT void DLL_CALLCONV QTrkEnableRadialZLUTCompareProfile(bool enabled);
+CDLL_EXPORT void DLL_CALLCONV QTrkGetRadialZLUTCompareProfile(float* dst); // dst = [count * planes]
+
 // data can be zero to allocate ZLUT data. zcmp has to have 'zlut_radialsteps' elements
-CDLL_EXPORT void DLL_CALLCONV QTrkSetRadialZLUT(QueuedTracker* qtrk, float* data, int count, int planes, float* zcmp=0); 
+CDLL_EXPORT void DLL_CALLCONV QTrkSetRadialZLUT(QueuedTracker* qtrk, float* data, int count, int planes); 
 CDLL_EXPORT void DLL_CALLCONV QTrkGetRadialZLUT(QueuedTracker* qtrk, float* dst);
 CDLL_EXPORT void DLL_CALLCONV QTrkGetRadialZLUTSize(QueuedTracker* qtrk, int* count, int* planes, int* radialsteps);
 
-CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUT(QueuedTracker* qtrk, void* data, int pitch, QTRK_PixelDataType pdt, bool imageLUT, int plane);
+// Set radial weights used for comparing LUT profiles, zcmp has to have 'zlut_radialsteps' elements
+CDLL_EXPORT void DLL_CALLCONV QTrkSetRadialWeights(QueuedTracker*qtrk,  float* zcmp);
+
+#define BUILDLUT_NORMALIZE 4
+#define BUILDLUT_BIASCORRECT 8
+CDLL_EXPORT void DLL_CALLCONV QTrkBeginLUT(QueuedTracker* qtrk, uint flags);
+CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUT(QueuedTracker* qtrk, void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos=0);
 CDLL_EXPORT void DLL_CALLCONV QTrkFinalizeLUT(QueuedTracker* qtrk);
-	
+
 CDLL_EXPORT int DLL_CALLCONV QTrkGetResultCount(QueuedTracker* qtrk);
 CDLL_EXPORT int DLL_CALLCONV QTrkFetchResults(QueuedTracker* qtrk, LocalizationResult* results, int maxResults);
 
 CDLL_EXPORT int DLL_CALLCONV QTrkGetQueueLength(QueuedTracker* qtrk, int *maxQueueLen);
 CDLL_EXPORT bool DLL_CALLCONV QTrkIsIdle(QueuedTracker* qtrk);
+
+/*	virtual void SetConfigValue(std::string name, std::string value) = 0;
+	typedef std::map<std::string, std::string> ConfigValueMap;
+	virtual ConfigValueMap GetConfigValues() = 0;
+	*/
 
 CDLL_EXPORT void DLL_CALLCONV QTrkGetProfileReport(QueuedTracker* qtrk, char *dst, int maxStrLen);
 CDLL_EXPORT void DLL_CALLCONV QTrkGetWarnings(QueuedTracker* qtrk, char *dst, int maxStrLen);
