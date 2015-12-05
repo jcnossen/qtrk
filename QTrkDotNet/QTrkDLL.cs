@@ -64,8 +64,20 @@ namespace QTrkDotNet
 
     [StructLayout(LayoutKind.Sequential)]
     public struct QTrkConfig
-    {        
-	    public int width, height;
+    {
+        public int width, height;
+
+        public int Height
+        {
+            get { return height; }
+            set { height = value; }
+        }
+
+        public int Width
+        {
+            get { return width; }
+            set { width = value; }
+        }
 	    public int numThreads;
 	    // cuda_device < 0: use flags above
 	    // cuda_device >= 0: use as hardware device index
@@ -78,18 +90,48 @@ namespace QTrkDotNet
 	    public float zlut_angular_coverage;
 	    public float zlut_roi_coverage; // maxradius = ROI/2*roi_coverage
 
-	    public int qi_iterations;
+        private int qi_iterations;
+
+        public int Qi_iterations
+        {
+            get { return qi_iterations; }
+            set { qi_iterations = value; }
+        }
 	    public float qi_minradius;
-	    public float qi_radial_coverage;
-	    public float qi_angular_coverage;
-	    public float qi_roi_coverage;
+        private float qi_radial_coverage;
+
+        public float Qi_radial_coverage
+        {
+            get { return qi_radial_coverage; }
+            set { qi_radial_coverage = value; }
+        }
+        private float qi_angular_coverage;
+
+        public float Qi_angular_coverage
+        {
+            get { return qi_angular_coverage; }
+            set { qi_angular_coverage = value; }
+        }
+        private float qi_roi_coverage;
+
+        public float Qi_roi_coverage
+        {
+            get { return qi_roi_coverage; }
+            set { qi_roi_coverage = value; }
+        }
 	    public float qi_angstep_factor;
 
 	    public int xc1_profileLength;
 	    public int xc1_profileWidth;
 	    public int xc1_iterations;
 
-	    public int gauss2D_iterations;
+        private int gauss2D_iterations;
+
+        public int Gauss2D_iterations
+        {
+            get { return gauss2D_iterations; }
+            set { gauss2D_iterations = value; }
+        }
 	    public float gauss2D_sigma;
 
     	public int downsample; // 0 = original, 1 = 1x (W=W/2,H=H/2)

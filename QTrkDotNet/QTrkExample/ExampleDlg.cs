@@ -14,8 +14,6 @@ namespace QTrkExample
 {
     public partial class ExampleDlg : Form
     {
-        QTrkInstance qtrk;
-
         public ExampleDlg()
         {
             InitializeComponent();
@@ -26,8 +24,45 @@ namespace QTrkExample
 
             QTrkConfig cfg = QTrkConfig.Default;
             cfg.width = cfg.height = 60;
-            qtrk = new QTrkInstance(cfg);
-
+            
+            propertyGridSettings.SelectedObject = cfg;
         }
+
+        
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+
+            if (disposing)
+            {
+//                qtrk.Dispose();
+            }
+
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private void buttonOpenLUT_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd=new OpenFileDialog()
+            {
+                Title="Select LUT image"
+            };
+
+            if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                Image img = Image.FromFile(ofd.FileName);
+            }
+                
+        }
+
+
     }
 }
