@@ -372,7 +372,7 @@ CDLL_EXPORT void qtrk_build_lut_plane(QueuedTracker* qtrk, LVArray3D<float> **da
 			return;
 		}
 
-		qtrk->BuildLUT( (*data)->elem, sizeof(float*) * qtrk->cfg.width, QTrkFloat, false, plane);
+		qtrk->BuildLUT( (*data)->elem, sizeof(float*) * qtrk->cfg.width, QTrkFloat, plane);
 	}
 }
 

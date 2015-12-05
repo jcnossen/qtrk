@@ -2,7 +2,7 @@
 #include <cstdarg>
 #include <functional>
 #include "utils.h"
-#include <Windows.h>
+#include <windows.h>
 #undef min
 #undef max
 #include <string>
