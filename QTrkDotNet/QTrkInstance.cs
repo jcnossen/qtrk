@@ -31,7 +31,7 @@ namespace QTrkDotNet
                 throw new ApplicationException("Use QTrkInstance::SelectDLL before creating an instance");
 
             inst = QTrkDLL.QTrkCreateInstance(ref config);
-            QTrkDLL.QTrkGetComputedConfig(inst, out cc);
+			QTrkDLL.QTrkGetComputedConfig(ref config, out cc);
         }
 
         public void Destroy()

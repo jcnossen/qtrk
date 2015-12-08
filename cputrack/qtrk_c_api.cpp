@@ -11,6 +11,11 @@ CDLL_EXPORT void DLL_CALLCONV QTrkGetDefaultConfig(QTrkSettings* cfg)
 	*cfg = QTrkSettings();
 }
 
+CDLL_EXPORT void DLL_CALLCONV QTrkGetComputedConfig(QTrkSettings* base, QTrkComputedConfig* cfg)
+{
+	*cfg=QTrkComputedConfig(*base);
+}
+
 
 CDLL_EXPORT QueuedTracker* DLL_CALLCONV QTrkCreateInstance(QTrkSettings *cfg)
 {
@@ -123,8 +128,3 @@ CDLL_EXPORT void DLL_CALLCONV QTrkGetWarnings(QueuedTracker* qtrk, char *dst, in
 	strncpy(dst, qtrk->GetWarnings().c_str(), maxStrLen);
 }
 
-
-CDLL_EXPORT void DLL_CALLCONV QTrkGetComputedConfig(QueuedTracker* qtrk, QTrkComputedConfig* cfg)
-{
-	*cfg = qtrk->cfg;
-}

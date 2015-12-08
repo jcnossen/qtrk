@@ -147,6 +147,13 @@ namespace QTrkDotNet
         }
     };
 
+	[StructLayout(LayoutKind.Sequential)]
+	public unsafe struct ImageData
+	{
+		public float* data;
+		public int width,height;
+	}
+
     [StructLayout(LayoutKind.Sequential)]
     public struct QTrkComputedConfig
     {
@@ -159,7 +166,14 @@ namespace QTrkDotNet
 	    public int qi_radialsteps;
 	    public int qi_angstepspq;
 	    public float qi_maxradius;
-    }
+
+		public static QTrkComputedConfig FromConfig(QTrkConfig cfg)
+		{
+			QTrkComputedConfig cc;
+			QTrkDLL.QTrkGetComputedConfig(ref cfg, out cc);
+			return cc;
+		}
+	}
 
     public unsafe class QTrkDLL
     {
@@ -248,7 +262,19 @@ namespace QTrkDotNet
         public static extern void QTrkGetWarnings(IntPtr qtrk, char* dst, int maxStrLen);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void QTrkGetComputedConfig(IntPtr qtrk, [Out] out QTrkComputedConfig cfg);
+        public static extern void QTrkGetComputedConfig([In] ref QTrkConfig cfg, [Out] out QTrkComputedConfig cc);
+
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void ComputeRadialProfile(float[] dst, int radialSteps, int angularSteps, float minradius, float maxradius, Vector2 center, ImageData* src, float mean, bool normalize);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void NormalizeRadialProfile([MarshalAs(UnmanagedType.LPArray)] float[] prof, int rsteps);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void GenerateImageFromLUT(ref ImageData image, [In] ref ImageData zlut, float minradius, float maxradius, Vector3 pos, bool useSplineInterp, int ovs);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void ApplyPoissonNoise([In] ref ImageData img, float poissonMax, float maxValue);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void ApplyGaussianNoise([In] ref ImageData img, float sigma);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]

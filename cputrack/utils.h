@@ -74,6 +74,8 @@ inline T Interpolate1D(const std::vector<T>& d, float x)
 
 void WriteImageAsCSV(const char* file, float* d, int w,int h, const char *labels[]=0);
 
+#pragma pack(push,4)
+
 template<typename T>
 struct TImageData {
 	T* data;
@@ -110,6 +112,8 @@ struct TImageData {
 	void free() { if(data) delete[] data;data=0; }
 	void writeAsCSV(const char *filename, const char *labels[]=0) { WriteImageAsCSV(filename, data, w,h,labels); }
 };
+
+#pragma pack(pop)
 
 class CImageData : public TImageData<float> {
 public:
@@ -153,12 +157,12 @@ typedef TImageData<double> ImageDatad;
 std::vector<float> ComputeRadialBinWindow(int rsteps);
 float ComputeBgCorrectedCOM1D(float *data, int len, float cf=2.0f);
 void ComputeCRP(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src,float mean, float*crpmap=0);
-void ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src, float mean, bool normalize);
-void NormalizeRadialProfile(float* prof, int rsteps);
+CDLL_EXPORT void DLL_CALLCONV ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src, float mean, bool normalize);
+CDLL_EXPORT void DLL_CALLCONV NormalizeRadialProfile(float* prof, int rsteps);
 void NormalizeZLUT(float *zlut, int numLUTs, int planes, int radialsteps);
-void GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos, bool useSplineInterp=true, int ovs=4);
-void ApplyPoissonNoise(ImageData& img, float poissonMax, float maxValue=255);
-void ApplyGaussianNoise(ImageData& img, float sigma);
+CDLL_EXPORT void DLL_CALLCONV GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos, bool useSplineInterp=true, int ovs=4);
+CDLL_EXPORT void DLL_CALLCONV ApplyPoissonNoise(ImageData& img, float poissonMax, float maxValue=255);
+CDLL_EXPORT void DLL_CALLCONV ApplyGaussianNoise(ImageData& img, float sigma);
 void WriteComplexImageAsCSV(const char* file, std::complex<float>* d, int w,int h, const char *labels[]=0);
 void WriteArrayAsCSVRow(const char *file, float* d, int len, bool append);
 std::vector< std::vector<float> > ReadCSV(const char *filename, char sep='\t');
@@ -186,7 +190,7 @@ void FloatToJPEGFile (const char *name, const float* d, int w,int h);
 inline void WriteJPEGFile(const char *name, const ImageData& img) { FloatToJPEGFile(name, img.data, img.w,img.h); }
 int NearestPowerOf2(int v);
 int NearestPowerOf3(int v);
-void GenerateGaussianSpotImage(ImageData* img, vector2f pos, float sigma, float I0, float Ibg);
+CDLL_EXPORT void DLL_CALLCONV GenerateGaussianSpotImage(ImageData* img, vector2f pos, float sigma, float I0, float Ibg);
 
 std::vector<uchar> ReadToByteBuffer(const char* filename);
 double GetPreciseTime();
