@@ -93,6 +93,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\QTrkDotNet\BeadSelectorDlg\BeadSelectorDlg.csproj">
+      <Project>{43c8d103-2c05-4458-b6aa-c5ec5726968b}</Project>
+      <Name>BeadSelectorDlg</Name>
+    </ProjectReference>
     <ProjectReference Include="..\QTrkDotNet\QTrkDotNet.csproj">
       <Project>{5985409e-2c7b-4666-a014-17cc9da53e2c}</Project>
       <Name>QTrkDotNet</Name>

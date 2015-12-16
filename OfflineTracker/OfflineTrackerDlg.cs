@@ -79,5 +79,18 @@ namespace OfflineTracker
 				}
 			}
 		}
+
+		private void buttonSelectBeads_Click(object sender, EventArgs e)
+		{
+			using(Bitmap bmp=new Bitmap("selectortest.png")) {
+				using (var fimg = new FloatImg(bmp, 0))
+				{
+					var dlg = new BeadSelectorDlg.BeadSelectorDlg(fimg);
+					if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+					{
+					}
+				}
+			}
+		}
 	}
 }

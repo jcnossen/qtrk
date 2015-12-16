@@ -30,16 +30,17 @@
 		{
 			this.tabControl1 = new System.Windows.Forms.TabControl();
 			this.tabPageSetup = new System.Windows.Forms.TabPage();
-			this.tabPageTrack = new System.Windows.Forms.TabPage();
-			this.buttonBuildLUT = new System.Windows.Forms.Button();
-			this.propertyGridQTrkSettings = new System.Windows.Forms.PropertyGrid();
-			this.buttonSelectExpDir = new System.Windows.Forms.Button();
-			this.buttonSelectLUTDir = new System.Windows.Forms.Button();
-			this.textExpDir = new System.Windows.Forms.TextBox();
-			this.textLUTDir = new System.Windows.Forms.TextBox();
-			this.buttonGenerateTestLUT = new System.Windows.Forms.Button();
 			this.buttonDiscardBead = new System.Windows.Forms.Button();
 			this.lutViewer = new OfflineTracker.LUTViewer();
+			this.textLUTDir = new System.Windows.Forms.TextBox();
+			this.textExpDir = new System.Windows.Forms.TextBox();
+			this.buttonSelectLUTDir = new System.Windows.Forms.Button();
+			this.buttonSelectExpDir = new System.Windows.Forms.Button();
+			this.propertyGridQTrkSettings = new System.Windows.Forms.PropertyGrid();
+			this.buttonGenerateTestLUT = new System.Windows.Forms.Button();
+			this.buttonBuildLUT = new System.Windows.Forms.Button();
+			this.tabPageTrack = new System.Windows.Forms.TabPage();
+			this.buttonSelectBeads = new System.Windows.Forms.Button();
 			this.tabControl1.SuspendLayout();
 			this.tabPageSetup.SuspendLayout();
 			this.SuspendLayout();
@@ -57,6 +58,7 @@
 			// 
 			// tabPageSetup
 			// 
+			this.tabPageSetup.Controls.Add(this.buttonSelectBeads);
 			this.tabPageSetup.Controls.Add(this.buttonDiscardBead);
 			this.tabPageSetup.Controls.Add(this.lutViewer);
 			this.tabPageSetup.Controls.Add(this.textLUTDir);
@@ -73,76 +75,6 @@
 			this.tabPageSetup.TabIndex = 0;
 			this.tabPageSetup.Text = "Configure";
 			this.tabPageSetup.UseVisualStyleBackColor = true;
-			// 
-			// tabPageTrack
-			// 
-			this.tabPageTrack.Location = new System.Drawing.Point(4, 25);
-			this.tabPageTrack.Name = "tabPageTrack";
-			this.tabPageTrack.Padding = new System.Windows.Forms.Padding(3);
-			this.tabPageTrack.Size = new System.Drawing.Size(998, 488);
-			this.tabPageTrack.TabIndex = 1;
-			this.tabPageTrack.Text = "Tracking";
-			this.tabPageTrack.UseVisualStyleBackColor = true;
-			// 
-			// buttonBuildLUT
-			// 
-			this.buttonBuildLUT.Location = new System.Drawing.Point(384, 76);
-			this.buttonBuildLUT.Name = "buttonBuildLUT";
-			this.buttonBuildLUT.Size = new System.Drawing.Size(178, 23);
-			this.buttonBuildLUT.TabIndex = 0;
-			this.buttonBuildLUT.Text = "Compute LUT from files";
-			this.buttonBuildLUT.UseVisualStyleBackColor = true;
-			// 
-			// propertyGridQTrkSettings
-			// 
-			this.propertyGridQTrkSettings.Location = new System.Drawing.Point(8, 221);
-			this.propertyGridQTrkSettings.Name = "propertyGridQTrkSettings";
-			this.propertyGridQTrkSettings.Size = new System.Drawing.Size(363, 255);
-			this.propertyGridQTrkSettings.TabIndex = 1;
-			// 
-			// buttonSelectExpDir
-			// 
-			this.buttonSelectExpDir.Location = new System.Drawing.Point(384, 18);
-			this.buttonSelectExpDir.Name = "buttonSelectExpDir";
-			this.buttonSelectExpDir.Size = new System.Drawing.Size(178, 23);
-			this.buttonSelectExpDir.TabIndex = 2;
-			this.buttonSelectExpDir.Text = "Select experiment dir";
-			this.buttonSelectExpDir.UseVisualStyleBackColor = true;
-			this.buttonSelectExpDir.Click += new System.EventHandler(this.buttonSelectExpDir_Click);
-			// 
-			// buttonSelectLUTDir
-			// 
-			this.buttonSelectLUTDir.Location = new System.Drawing.Point(384, 47);
-			this.buttonSelectLUTDir.Name = "buttonSelectLUTDir";
-			this.buttonSelectLUTDir.Size = new System.Drawing.Size(178, 23);
-			this.buttonSelectLUTDir.TabIndex = 2;
-			this.buttonSelectLUTDir.Text = "Select LUT dir";
-			this.buttonSelectLUTDir.UseVisualStyleBackColor = true;
-			this.buttonSelectLUTDir.Click += new System.EventHandler(this.buttonSelectLUTDir_Click);
-			// 
-			// textExpDir
-			// 
-			this.textExpDir.Location = new System.Drawing.Point(568, 19);
-			this.textExpDir.Name = "textExpDir";
-			this.textExpDir.Size = new System.Drawing.Size(357, 22);
-			this.textExpDir.TabIndex = 3;
-			// 
-			// textLUTDir
-			// 
-			this.textLUTDir.Location = new System.Drawing.Point(568, 48);
-			this.textLUTDir.Name = "textLUTDir";
-			this.textLUTDir.Size = new System.Drawing.Size(357, 22);
-			this.textLUTDir.TabIndex = 3;
-			// 
-			// buttonGenerateTestLUT
-			// 
-			this.buttonGenerateTestLUT.Location = new System.Drawing.Point(384, 105);
-			this.buttonGenerateTestLUT.Name = "buttonGenerateTestLUT";
-			this.buttonGenerateTestLUT.Size = new System.Drawing.Size(178, 23);
-			this.buttonGenerateTestLUT.TabIndex = 0;
-			this.buttonGenerateTestLUT.Text = "Generate test LUT";
-			this.buttonGenerateTestLUT.UseVisualStyleBackColor = true;
-			this.buttonGenerateTestLUT.Click += new System.EventHandler(this.buttonGenerateTestLUT_Click);
 			// 
 			// buttonDiscardBead
 			// 
@@ -162,6 +94,86 @@
 			this.lutViewer.Name = "lutViewer";
 			this.lutViewer.Size = new System.Drawing.Size(583, 342);
 			this.lutViewer.TabIndex = 4;
+			// 
+			// textLUTDir
+			// 
+			this.textLUTDir.Location = new System.Drawing.Point(568, 48);
+			this.textLUTDir.Name = "textLUTDir";
+			this.textLUTDir.Size = new System.Drawing.Size(357, 22);
+			this.textLUTDir.TabIndex = 3;
+			// 
+			// textExpDir
+			// 
+			this.textExpDir.Location = new System.Drawing.Point(568, 19);
+			this.textExpDir.Name = "textExpDir";
+			this.textExpDir.Size = new System.Drawing.Size(357, 22);
+			this.textExpDir.TabIndex = 3;
+			// 
+			// buttonSelectLUTDir
+			// 
+			this.buttonSelectLUTDir.Location = new System.Drawing.Point(384, 47);
+			this.buttonSelectLUTDir.Name = "buttonSelectLUTDir";
+			this.buttonSelectLUTDir.Size = new System.Drawing.Size(178, 23);
+			this.buttonSelectLUTDir.TabIndex = 2;
+			this.buttonSelectLUTDir.Text = "Select LUT dir";
+			this.buttonSelectLUTDir.UseVisualStyleBackColor = true;
+			this.buttonSelectLUTDir.Click += new System.EventHandler(this.buttonSelectLUTDir_Click);
+			// 
+			// buttonSelectExpDir
+			// 
+			this.buttonSelectExpDir.Location = new System.Drawing.Point(384, 18);
+			this.buttonSelectExpDir.Name = "buttonSelectExpDir";
+			this.buttonSelectExpDir.Size = new System.Drawing.Size(178, 23);
+			this.buttonSelectExpDir.TabIndex = 2;
+			this.buttonSelectExpDir.Text = "Select experiment dir";
+			this.buttonSelectExpDir.UseVisualStyleBackColor = true;
+			this.buttonSelectExpDir.Click += new System.EventHandler(this.buttonSelectExpDir_Click);
+			// 
+			// propertyGridQTrkSettings
+			// 
+			this.propertyGridQTrkSettings.Location = new System.Drawing.Point(8, 221);
+			this.propertyGridQTrkSettings.Name = "propertyGridQTrkSettings";
+			this.propertyGridQTrkSettings.Size = new System.Drawing.Size(363, 255);
+			this.propertyGridQTrkSettings.TabIndex = 1;
+			// 
+			// buttonGenerateTestLUT
+			// 
+			this.buttonGenerateTestLUT.Location = new System.Drawing.Point(384, 105);
+			this.buttonGenerateTestLUT.Name = "buttonGenerateTestLUT";
+			this.buttonGenerateTestLUT.Size = new System.Drawing.Size(178, 23);
+			this.buttonGenerateTestLUT.TabIndex = 0;
+			this.buttonGenerateTestLUT.Text = "Generate test LUT";
+			this.buttonGenerateTestLUT.UseVisualStyleBackColor = true;
+			this.buttonGenerateTestLUT.Click += new System.EventHandler(this.buttonGenerateTestLUT_Click);
+			// 
+			// buttonBuildLUT
+			// 
+			this.buttonBuildLUT.Location = new System.Drawing.Point(384, 76);
+			this.buttonBuildLUT.Name = "buttonBuildLUT";
+			this.buttonBuildLUT.Size = new System.Drawing.Size(178, 23);
+			this.buttonBuildLUT.TabIndex = 0;
+			this.buttonBuildLUT.Text = "Compute LUT from files";
+			this.buttonBuildLUT.UseVisualStyleBackColor = true;
+			// 
+			// tabPageTrack
+			// 
+			this.tabPageTrack.Location = new System.Drawing.Point(4, 25);
+			this.tabPageTrack.Name = "tabPageTrack";
+			this.tabPageTrack.Padding = new System.Windows.Forms.Padding(3);
+			this.tabPageTrack.Size = new System.Drawing.Size(998, 488);
+			this.tabPageTrack.TabIndex = 1;
+			this.tabPageTrack.Text = "Tracking";
+			this.tabPageTrack.UseVisualStyleBackColor = true;
+			// 
+			// buttonSelectBeads
+			// 
+			this.buttonSelectBeads.Location = new System.Drawing.Point(146, 48);
+			this.buttonSelectBeads.Name = "buttonSelectBeads";
+			this.buttonSelectBeads.Size = new System.Drawing.Size(178, 23);
+			this.buttonSelectBeads.TabIndex = 6;
+			this.buttonSelectBeads.Text = "Select beads";
+			this.buttonSelectBeads.UseVisualStyleBackColor = true;
+			this.buttonSelectBeads.Click += new System.EventHandler(this.buttonSelectBeads_Click);
 			// 
 			// OfflineTrackerDlg
 			// 
@@ -192,6 +204,7 @@
 		private System.Windows.Forms.Button buttonBuildLUT;
 		private System.Windows.Forms.Button buttonDiscardBead;
 		private LUTViewer lutViewer;
+		private System.Windows.Forms.Button buttonSelectBeads;
 	}
 }
 
