@@ -147,8 +147,8 @@ CDLL_EXPORT void DLL_CALLCONV QTrkFreeInstance(QueuedTracker* qtrk);
 // C API, mainly intended to allow binding to .NET
 CDLL_EXPORT void DLL_CALLCONV QTrkSetLocalizationMode(QueuedTracker* qtrk, LocMode_t locType);
 
-	// These are per-bead! So both gain and offset are sized [width*height*numbeads], similar to ZLUT
-	// result=gain*(pixel+offset)
+// These are per-bead! So both gain and offset are sized [width*height*numbeads], similar to ZLUT
+// result=gain*(pixel+offset)
 CDLL_EXPORT void DLL_CALLCONV QTrkSetPixelCalibrationImages(QueuedTracker* qtrk, float* offset, float* gain);
 CDLL_EXPORT void DLL_CALLCONV QTrkSetPixelCalibrationFactors(float offsetFactor, float gainFactor);
 
@@ -192,4 +192,10 @@ CDLL_EXPORT bool DLL_CALLCONV QTrkIsIdle(QueuedTracker* qtrk);
 
 CDLL_EXPORT void DLL_CALLCONV QTrkGetProfileReport(QueuedTracker* qtrk, char *dst, int maxStrLen);
 CDLL_EXPORT void DLL_CALLCONV QTrkGetWarnings(QueuedTracker* qtrk, char *dst, int maxStrLen);
+
+
+
+CDLL_EXPORT void QTrkFreeROIPositions(ROIPosition *data);
+CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance);
+
 

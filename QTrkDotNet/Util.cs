@@ -124,5 +124,21 @@ namespace QTrkDotNet
 		public static void ApplyGaussianNoise(FloatImg img, float sigma)
 		{
 		}
+
+        public static Int2[] FindBeads(FloatImg img, Int2 sampleCornerPos, int roi, float imgRelDist, float acceptance)
+        {
+//                    public static extern IntPtr QTrkFindBeads(float* image, int w, int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance);
+            int beadCount;
+            IntPtr beadListPtr = QTrkDLL.QTrkFindBeads(img.ImageData.data, img.w, img.h, sampleCornerPos.x, sampleCornerPos.y, roi, imgRelDist, acceptance, out beadCount);
+            Int2* beadpos = (Int2*)beadListPtr.ToPointer();
+
+            Int2[] r = new Int2[beadCount];
+            for(int i=0;i<beadCount;i++)
+
+
+            QTrkDLL.QTrkFreeROIPositions(beadListPtr);
+        }
+
+
 	}
 }

@@ -276,6 +276,11 @@ namespace QTrkDotNet
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void ApplyGaussianNoise([In] ref ImageData img, float sigma);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr QTrkFindBeads(float* image, int w, int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance, out int beadCount);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void QTrkFreeROIPositions(IntPtr data);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool SetDllDirectory(string lpPathName);

@@ -16,11 +16,8 @@ namespace OfflineTracker
 {
 	public partial class OfflineTrackerDlg : Form
 	{
-
-
 		public OfflineTrackerDlg()
 		{
-
 			InitializeComponent();
 			QTrkInstance.SelectDLL(true, false);
 
@@ -79,5 +76,10 @@ namespace OfflineTracker
 				}
 			}
 		}
+
+        private void buttonSelectBeads_Click(object sender, EventArgs e)
+        {
+
+        }
 	}
 }

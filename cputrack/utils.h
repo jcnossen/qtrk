@@ -111,6 +111,15 @@ struct TImageData {
 	static TImageData alloc(int w,int h) { return TImageData<T>(new T[w*h], w,h); }
 	void free() { if(data) delete[] data;data=0; }
 	void writeAsCSV(const char *filename, const char *labels[]=0) { WriteImageAsCSV(filename, data, w,h,labels); }
+	void clear() { for(int x=0;x<w*h;x++) data[x]=0; }
+	TImageData subimage(int x,int y,int sw,int sh)
+	{
+		TImageData subimg=alloc(sw,sh);
+		if (x < 0) { sw += x; x=0;} 
+		if (y < 0) { sh += y; y=0;}
+		if (x + sw > w) { sw -= x-w; }
+		if (y + sh > h) { sh -= y-h; }
+	}
 };
 
 #pragma pack(pop)

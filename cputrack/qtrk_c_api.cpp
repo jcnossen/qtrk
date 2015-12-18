@@ -1,5 +1,6 @@
 #include "std_incl.h"
 #include "QueuedTracker.h"
+#include "BeadFinder.h"
 
 CDLL_EXPORT void DLL_CALLCONV TestDLLCallConv(int a)
 {
@@ -15,6 +16,32 @@ CDLL_EXPORT void DLL_CALLCONV QTrkGetComputedConfig(QTrkSettings* base, QTrkComp
 {
 	*cfg=QTrkComputedConfig(*base);
 }
+
+
+CDLL_EXPORT void QTrkFreeROIPositions(ROIPosition *data)
+{
+	delete[] data;
+}
+
+CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance)
+{
+	BeadFinder::Config cfg;
+	cfg.img_distance = imgRelDist;
+	cfg.roi = roi;
+	cfg.similarity = acceptance;
+	ImageData img = ImageData(image, w,h);
+	ImageData sampleImg = img.Subimage(smpCornerPosX, smpCornerPosY, roi,roi);
+	auto results = BeadFinder::Find(&img, sampleImg.data, &cfg);
+	sampleImg.free();
+
+	ROIPosition *output=new ROIPosition[results.size()];
+	for (int i=0;i<results.size();i++)
+	{
+		output[i].x = results[i].x;
+		output[i].y = results[i].y;
+	}
+}
+
 
 
 CDLL_EXPORT QueuedTracker* DLL_CALLCONV QTrkCreateInstance(QTrkSettings *cfg)
