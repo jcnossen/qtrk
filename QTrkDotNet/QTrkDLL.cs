@@ -54,14 +54,7 @@ namespace QTrkDotNet
 	    public uint error;
         public float imageMean;
     };
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ROIPosition
-    {
-	    public int x,y; // top-left coordinates. ROI is [ x .. x+w ; y .. y+h ]
-    };
-
-
+    
     [StructLayout(LayoutKind.Sequential)]
     public struct QTrkConfig
     {
@@ -213,7 +206,7 @@ namespace QTrkDotNet
 
         // Schedule an entire frame at once, allowing for further optimizations
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int QTrkScheduleFrame(IntPtr qtrk, void* imgptr, int pitch, int width, int height, ROIPosition* positions, int numROI, QTRK_PixelDataType pdt, LocalizationJob* jobInfo);
+        public static extern int QTrkScheduleFrame(IntPtr qtrk, void* imgptr, int pitch, int width, int height, Int2* positions, int numROI, QTRK_PixelDataType pdt, LocalizationJob* jobInfo);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkEnableRadialZLUTCompareProfile(bool enabled);
@@ -236,6 +229,8 @@ namespace QTrkDotNet
         //#define BUILDLUT_BIASCORRECT 8
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkBeginLUT(IntPtr qtrk, uint flags);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void QTrkBuildLUTFromFrame(IntPtr qtrk, ref ImageData frame, QTRK_PixelDataType pdt, int plane, [In] Int2[] roipos, int numroi);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkBuildLUT(IntPtr qtrk, void* data, int pitch, QTRK_PixelDataType pdt, int plane, Vector2[] known_pos);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]

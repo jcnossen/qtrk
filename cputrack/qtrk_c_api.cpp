@@ -30,7 +30,7 @@ CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerP
 	cfg.roi = roi;
 	cfg.similarity = acceptance;
 	ImageData img = ImageData(image, w,h);
-	ImageData sampleImg = img.Subimage(smpCornerPosX, smpCornerPosY, roi,roi);
+	ImageData sampleImg = img.subimage(smpCornerPosX, smpCornerPosY, roi,roi);
 	auto results = BeadFinder::Find(&img, sampleImg.data, &cfg);
 	sampleImg.free();
 
@@ -40,6 +40,8 @@ CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerP
 		output[i].x = results[i].x;
 		output[i].y = results[i].y;
 	}
+
+	return output;
 }
 
 
@@ -111,6 +113,16 @@ CDLL_EXPORT void DLL_CALLCONV QTrkSetRadialWeights(QueuedTracker*qtrk, float* zc
 CDLL_EXPORT void DLL_CALLCONV QTrkBeginLUT(QueuedTracker* qtrk, uint flags)
 {
 	qtrk->BeginLUT(flags);
+}
+
+CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUTFromFrame(QueuedTracker* qtrk, ImageData* frame, QTRK_PixelDataType pdt, int plane, ROIPosition* roipos, int numroi)
+{
+	ImageData extracted = ImageData::alloc(qtrk->cfg.width, qtrk->cfg.height*numroi);
+	for (int i=0;i<numroi;i++){
+		frame->copyTo(extracted, roipos[i].x, roipos[i].y, 0, i*qtrk->cfg.height, qtrk->cfg.width,qtrk->cfg.height);
+	}
+	qtrk->BuildLUT(extracted.data, sizeof(float)*qtrk->cfg.width, QTrkFloat, plane);
+	extracted.free();
 }
 
 CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUT(QueuedTracker* qtrk, void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos)

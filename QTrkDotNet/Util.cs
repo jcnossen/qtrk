@@ -18,7 +18,16 @@ namespace QTrkDotNet
 			Alloc(w, h);
 		}
 
-		void Alloc(int w, int h)
+        public unsafe FloatImg(int w, int h, float* src)
+        {
+            Alloc(w, h);
+
+            float* dst=(float*)pixels.ToPointer();
+            for (int i = 0; i < w * h; i++)
+                dst[i] = src[i];
+        }
+
+        void Alloc(int w, int h)
 		{
 			Dispose();
 			this.w = w; this.h = h;

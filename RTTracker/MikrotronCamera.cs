@@ -87,7 +87,7 @@ namespace RTTracker
             {
                 // frame min max
              
-                //%06x %02x-%06x       
+                //%06x %02x-%06x
 
                 string resp = SerialCmd(":q?");
                 string[] values=resp.Split(' ');

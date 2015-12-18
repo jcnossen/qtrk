@@ -111,5 +111,11 @@ namespace BeadSelectorDlg
         {
             pictureBox.Invalidate();
         }
-	}
+
+        public int ROISize
+        {
+            get { return GetROI(); }
+            set { textBoxROI.Text = value.ToString(); }
+        }
+    }
 }

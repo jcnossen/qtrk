@@ -112,13 +112,26 @@ struct TImageData {
 	void free() { if(data) delete[] data;data=0; }
 	void writeAsCSV(const char *filename, const char *labels[]=0) { WriteImageAsCSV(filename, data, w,h,labels); }
 	void clear() { for(int x=0;x<w*h;x++) data[x]=0; }
-	TImageData subimage(int x,int y,int sw,int sh)
+	TImageData subimage(int sx,int sy,int sw,int sh)
 	{
 		TImageData subimg=alloc(sw,sh);
-		if (x < 0) { sw += x; x=0;} 
-		if (y < 0) { sh += y; y=0;}
-		if (x + sw > w) { sw -= x-w; }
-		if (y + sh > h) { sh -= y-h; }
+		if (sx < 0) { sw += sx; sx=0;} 
+		if (sy < 0) { sh += sy; sy=0;}
+		if (sx + sw > w) { sw -= sx-w; }
+		if (sy + sh > h) { sh -= sy-h; }
+		for (int y=0;y<sh;y++) {
+			for (int x=0;x<sw;x++) {
+				subimg.at(x,y)=at(x+sx,y+sy);
+			}
+		}
+		return subimg;
+	}
+	void copyTo(TImageData& dst, int srcX, int srcY, int dstX,int dstY, int cw, int ch) {
+		for (int y=0;y<ch;y++) {
+			float* srcp = &at(srcX, srcY+y);
+			float* dstp = &dst.at(dstX, dstX+y);
+			for (int x=0;x<cw;x++) dstp[x]=srcp[x];
+		}
 	}
 };
 

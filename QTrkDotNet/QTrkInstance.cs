@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace QTrkDotNet
@@ -45,9 +46,45 @@ namespace QTrkDotNet
             }
         }
 
+        public void BeginLUT(bool normalize)
+        {
+            QTrkDLL.QTrkBeginLUT(inst, (uint)( normalize ? 4 : 0 ));
+        }
+
+        public void ProcessLUTFrame(ImageData image, Int2[] roiPos, int plane)
+        {
+            QTrkDLL.QTrkBuildLUTFromFrame(inst, ref image, QTRK_PixelDataType.Float, plane, roiPos, roiPos.Length);
+        }
+
+        public void FinalizeLUT()
+        {
+            QTrkDLL.QTrkFinalizeLUT(inst);
+        }
+
         public void Dispose()
         {
             Destroy();
+        }
+
+        public FloatImg[] GetRadialZLUT()
+        {
+            int count,planes,radialsteps;
+            QTrkDLL.QTrkGetRadialZLUTSize(inst, out count, out planes, out radialsteps);
+
+            IntPtr lutspace= Marshal.AllocHGlobal(sizeof(float) * count * planes* radialsteps);
+            QTrkDLL.QTrkGetRadialZLUT(inst, (float*)lutspace.ToPointer());
+
+            FloatImg[] luts = new FloatImg[count];
+            float* src=(float*)lutspace.ToPointer();
+            for (int i = 0; i < count; i++)
+            {
+                float *srcimg=&src[i*planes*radialsteps*sizeof(float)];
+                luts[i] = new FloatImg(radialsteps, planes, srcimg);
+            }
+
+            Marshal.FreeHGlobal(lutspace);
+
+            return luts;
         }
     }
 }
