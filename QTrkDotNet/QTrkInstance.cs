@@ -72,19 +72,24 @@ namespace QTrkDotNet
             QTrkDLL.QTrkGetRadialZLUTSize(inst, out count, out planes, out radialsteps);
 
             IntPtr lutspace= Marshal.AllocHGlobal(sizeof(float) * count * planes* radialsteps);
-            QTrkDLL.QTrkGetRadialZLUT(inst, (float*)lutspace.ToPointer());
+            QTrkDLL.QTrkGetRadialZLUT(inst, lutspace);
 
             FloatImg[] luts = new FloatImg[count];
             float* src=(float*)lutspace.ToPointer();
             for (int i = 0; i < count; i++)
             {
-                float *srcimg=&src[i*planes*radialsteps*sizeof(float)];
+                float *srcimg=&src[i*planes*radialsteps];
                 luts[i] = new FloatImg(radialsteps, planes, srcimg);
             }
 
             Marshal.FreeHGlobal(lutspace);
 
             return luts;
+        }
+
+        public void SetRadialZLUTSize(int nbeads, int numLUTSteps)
+        {
+            QTrkDLL.QTrkSetRadialZLUT(inst, IntPtr.Zero, nbeads, numLUTSteps);
         }
     }
 }

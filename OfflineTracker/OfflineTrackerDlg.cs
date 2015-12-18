@@ -190,6 +190,8 @@ namespace OfflineTracker
         {
             using (QTrkInstance inst = new QTrkInstance(GetTrackerConfig()))
             {
+                inst.SetRadialZLUTSize(beadPosList.Count, numLUTSteps);
+
                 inst.BeginLUT(true);
 
                 for (int i = 0; i < numLUTSteps; i++)
@@ -211,6 +213,8 @@ namespace OfflineTracker
 
                 inst.FinalizeLUT();
                 luts = inst.GetRadialZLUT();
+
+                lutViewer.LUTs = luts;
             }
         }
 
@@ -236,6 +240,7 @@ namespace OfflineTracker
                 XmlSerializer s = new XmlSerializer(typeof(Int2[]));
                 var result=(Int2[])s.Deserialize(stream);
                 beadPosList = result.ToList();
+                UpdateInfo();
             }
         }
 

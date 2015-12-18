@@ -215,9 +215,9 @@ namespace QTrkDotNet
 
         // data can be zero to allocate ZLUT data. zcmp has to have 'zlut_radialsteps' elements
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern unsafe void QTrkSetRadialZLUT(IntPtr qtrk, float* data, int count, int planes);
+        public static extern void QTrkSetRadialZLUT(IntPtr qtrk, IntPtr data, int count, int planes);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern unsafe void QTrkGetRadialZLUT(IntPtr qtrk, float* dst);
+        public static extern void QTrkGetRadialZLUT(IntPtr qtrk, IntPtr dst);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkGetRadialZLUTSize(IntPtr qtrk, out int count, out int planes, out int radialsteps);
 
