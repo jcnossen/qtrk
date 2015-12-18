@@ -16,17 +16,27 @@ namespace OfflineTracker
 {
 	public partial class OfflineTrackerDlg : Form
 	{
+        List<Int2> beadPosList = new List<Int2>();
+
 		public OfflineTrackerDlg()
 		{
 			InitializeComponent();
-			QTrkInstance.SelectDLL(true, false);
 
-			propertyGridQTrkSettings.SelectedObject = QTrkConfig.Default;
+            if (!DesignMode)
+            {
+                QTrkInstance.SelectDLL(true, false);
+
+                var d = QTrkConfig.Default;
+                d.width = d.height = 80;
+                propertyGridQTrkSettings.SelectedObject = d;
+                UpdateInfo();
+            }
 		}
 
 		QTrkConfig Config
 		{
 			get { return (QTrkConfig)propertyGridQTrkSettings.SelectedObject; }
+            set { propertyGridQTrkSettings.SelectedObject = value; }
 		}
 
 		private void buttonSelectExpDir_Click(object sender, EventArgs e)
@@ -35,7 +45,8 @@ namespace OfflineTracker
 			if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				textExpDir.Text = fbd.SelectedPath;
-			}
+                UpdateInfo();
+            }
 		}
 
 		private void buttonSelectLUTDir_Click(object sender, EventArgs e)
@@ -44,6 +55,7 @@ namespace OfflineTracker
 			if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				textLUTDir.Text = fbd.SelectedPath;
+                UpdateInfo();
 			}
 		}
 
@@ -77,9 +89,30 @@ namespace OfflineTracker
 			}
 		}
 
-        private void buttonSelectBeads_Click(object sender, EventArgs e)
+		private void buttonSelectBeads_Click(object sender, EventArgs e)
+		{
+			using(Bitmap bmp=new Bitmap("selectortest.png")) {
+				using (var fimg = new FloatImg(bmp, 0))
+				{
+					var dlg = new BeadSelectorDlg.BeadSelectorDlg(fimg, Config.width, beadPosList.ToArray());
+					if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+					{
+                        beadPosList = dlg.ROIPositions.ToList();
+                        UpdateInfo();
+					}
+				}
+			}
+		}
+
+        private void propertyGridQTrkSettings_PropertyValueChanged(object s, PropertyValueChangedEventArgs e)
         {
 
         }
+
+        public void UpdateInfo()
+        {
+            labelNumBeads.Text = "#Beads: " + beadPosList.Count;
+        }
 	}
 }
+

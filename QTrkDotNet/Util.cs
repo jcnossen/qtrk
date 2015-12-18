@@ -133,10 +133,11 @@ namespace QTrkDotNet
             Int2* beadpos = (Int2*)beadListPtr.ToPointer();
 
             Int2[] r = new Int2[beadCount];
-            for(int i=0;i<beadCount;i++)
-
+            for (int i = 0; i < beadCount; i++)
+                r[i] = beadpos[i];
 
             QTrkDLL.QTrkFreeROIPositions(beadListPtr);
+            return r;
         }
 
 

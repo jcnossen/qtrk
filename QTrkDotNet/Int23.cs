@@ -79,6 +79,15 @@ namespace QTrkDotNet
     }
     public struct Int3 : IEquatable<Int3>
     {
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
         public Int3(Int2 p)
         {
             this.x = p.x; this.y = p.y; this.z = 0;
