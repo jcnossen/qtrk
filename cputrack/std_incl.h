@@ -2,7 +2,6 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <crtdbg.h>
-#include "memdbg.h"
 #include <cstdint>
 #include <string>
 #include <deque>

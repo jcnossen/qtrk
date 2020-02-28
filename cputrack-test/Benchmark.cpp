@@ -16,7 +16,7 @@ void BenchmarkROISizes(const char *name, int n, int MaxPixelValue, int qi_iterat
 	std::vector<SpeedAccResult> results;
 	std::vector<int> rois;
 
-	const char *lutfile = "zrange\\exp_qi.radialzlut#169";
+	const char *lutfile = "lut000.jpg";
 	ImageData lut = ReadLUTFile(lutfile);
 
 	for (int roi=20;roi<=180;roi+=10) {

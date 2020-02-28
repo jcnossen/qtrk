@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 using System.Text;
 using System.IO;
 using System.Diagnostics;
+using System.Security;
+using System.Xml.Serialization;
 
 namespace QTrkDotNet
 {
+	[Flags]
     public enum LocalizeModeEnum {
 	    // Flags for selecting 2D localization type
 	    OnlyCOM = 0, // use only COM
@@ -58,18 +62,13 @@ namespace QTrkDotNet
     [StructLayout(LayoutKind.Sequential)]
     public struct QTrkConfig
     {
+        [XmlIgnore]
         public int width, height;
 
-        public int Height
-        {
-            get { return height; }
-            set { height = value; }
-        }
-
-        public int Width
+        public int ROI
         {
             get { return width; }
-            set { width = value; }
+            set { width = height = value; }
         }
 	    public int numThreads;
 	    // cuda_device < 0: use flags above
@@ -83,31 +82,42 @@ namespace QTrkDotNet
 	    public float zlut_angular_coverage;
 	    public float zlut_roi_coverage; // maxradius = ROI/2*roi_coverage
 
-        private int qi_iterations;
+        public int qi_iterations;
 
-        public int Qi_iterations
+        [XmlIgnore]
+        [Description("Number of iterations done by QI algorithm. 3 is typically good enough for small ROI (~60)")]
+        public int QI_iterations
         {
             get { return qi_iterations; }
             set { qi_iterations = value; }
         }
+        [XmlIgnore]
+        public float QI_minradius
+        {
+            get { return qi_minradius; }
+            set { qi_minradius = value; }
+        }
 	    public float qi_minradius;
-        private float qi_radial_coverage;
+        public float qi_radial_coverage;
 
-        public float Qi_radial_coverage
+        [XmlIgnore]
+        public float QI_radial_coverage
         {
             get { return qi_radial_coverage; }
             set { qi_radial_coverage = value; }
         }
-        private float qi_angular_coverage;
+        public float qi_angular_coverage;
 
-        public float Qi_angular_coverage
+        [XmlIgnore]
+        public float QI_angular_coverage
         {
             get { return qi_angular_coverage; }
             set { qi_angular_coverage = value; }
         }
-        private float qi_roi_coverage;
+        public float qi_roi_coverage;
 
-        public float Qi_roi_coverage
+        [XmlIgnore]
+        public float QI_roi_coverage
         {
             get { return qi_roi_coverage; }
             set { qi_roi_coverage = value; }
@@ -118,8 +128,9 @@ namespace QTrkDotNet
 	    public int xc1_profileWidth;
 	    public int xc1_iterations;
 
-        private int gauss2D_iterations;
+        public int gauss2D_iterations;
 
+        [XmlIgnore]
         public int Gauss2D_iterations
         {
             get { return gauss2D_iterations; }
@@ -129,7 +140,7 @@ namespace QTrkDotNet
 
     	public int downsample; // 0 = original, 1 = 1x (W=W/2,H=H/2)
 
-        public  unsafe static QTrkConfig Default
+        public unsafe static QTrkConfig Default
         {
             get
             {
@@ -138,6 +149,37 @@ namespace QTrkDotNet
                 return val;
             }
         }
+                
+        [XmlIgnore]
+        [Description("How many pixels away from the bead center do we start creating the ZLUT radial profile?")]
+        public float ZLUT_minradius
+        {
+            get { return zlut_minradius; }
+            set { zlut_minradius = value; }
+        }
+
+        [XmlIgnore]
+        [Description("Which fraction of the ROI is used to compute the radial profile. " +
+                     "Example: For a 60x60 ROI, 0.5 means sampling the radial profile using a circle of 30 pixels wide.")]
+        public float ZLUT_roi_coverage
+        {
+            get { return zlut_roi_coverage; }
+            set { zlut_roi_coverage = value; }
+        }
+
+        [XmlIgnore]
+        public float ZLUT_radial_coverage
+        {
+            get { return zlut_radial_coverage; }
+            set { zlut_radial_coverage = value; }
+        }
+
+        [XmlIgnore]
+        public float ZLUT_angular_coverage
+        {
+            get { return zlut_angular_coverage; }
+            set { zlut_angular_coverage = value; }
+        }
     };
 
 	[StructLayout(LayoutKind.Sequential)]
@@ -145,6 +187,10 @@ namespace QTrkDotNet
 	{
 		public float* data;
 		public int width,height;
+
+		public int Pitch { get { return 4 * width; } }
+
+		public IntPtr Pointer { get { return new IntPtr(data); } }
 	}
 
     [StructLayout(LayoutKind.Sequential)]
@@ -168,6 +214,29 @@ namespace QTrkDotNet
 		}
 	}
 
+	[StructLayout(LayoutKind.Sequential)]
+	public struct RMFrameCounters {
+		public int startFrame; // startFrame for frameResults
+		public int processedFrames; // frame where all data is retrieved (all beads)
+		public int lastSaveFrame;
+		public int capturedFrames;  // lock by resultMutex
+		public int localizationsDone;
+		public int lostFrames;
+		public int fileError;
+	}
+
+	[StructLayout( LayoutKind.Sequential)]
+	public struct ResultManagerConfig
+	{
+		public int numBeads, numFrameInfoColumns;
+		public Vector3 scaling;
+		public Vector3 offset; // output will be (position + offset) * scaling
+		public int writeInterval; // [frames]
+		public uint maxFramesInMemory; // 0 for infinite
+		public byte binaryOutput;
+	}
+
+
     public unsafe class QTrkDLL
     {
         public const string DllName = "qtrk.dll";
@@ -184,7 +253,8 @@ namespace QTrkDotNet
         public static extern void QTrkFreeInstance(IntPtr qtrk);
 
         // C API, mainly intended to allow binding to .NET
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkSetLocalizationMode(IntPtr qtrk, int locType);
 
 	    // These are per-bead! So both gain and offset are sized [width*height*numbeads], similar to ZLUT
@@ -197,16 +267,22 @@ namespace QTrkDotNet
         // Frame and timestamp are ignored by tracking code itself, but usable for the calling code
         // Pitch: Distance in bytes between two successive rows of pixels (e.g. address of (0,0) -  address of (0,1) )
         // ZlutIndex: Which ZLUT to use for ComputeZ/BuildZLUT
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkScheduleLocalization(IntPtr qtrk, void* data, int pitch, QTRK_PixelDataType pdt, LocalizationJob* jobInfo);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkClearResults(IntPtr qtrk);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkFlush(IntPtr qtrk); // stop waiting for more jobs to do, and just process the current batch
 
         // Schedule an entire frame at once, allowing for further optimizations
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int QTrkScheduleFrame(IntPtr qtrk, void* imgptr, int pitch, int width, int height, Int2* positions, int numROI, QTRK_PixelDataType pdt, LocalizationJob* jobInfo);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int QTrkScheduleFrame(IntPtr qtrk, IntPtr imgptr, int pitch, int width, int height, [In] Int2[] positions, int numROI, QTRK_PixelDataType pdt, [In] LocalizationJob[] jobInfo);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkEnableRadialZLUTCompareProfile(bool enabled);
@@ -214,36 +290,47 @@ namespace QTrkDotNet
         public static extern unsafe void QTrkGetRadialZLUTCompareProfile(float* dst); // dst = [count * planes]
 
         // data can be zero to allocate ZLUT data. zcmp has to have 'zlut_radialsteps' elements
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkSetRadialZLUT(IntPtr qtrk, IntPtr data, int count, int planes);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkGetRadialZLUT(IntPtr qtrk, IntPtr dst);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkGetRadialZLUTSize(IntPtr qtrk, out int count, out int planes, out int radialsteps);
 
         // Set radial weights used for comparing LUT profiles, zcmp has to have 'zlut_radialsteps' elements
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void QTrkSetRadialWeights(IntPtr qtrk, float* zcmp);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void QTrkSetRadialWeights(IntPtr qtrk, [In] float[] zcmp);
 
 //        #define BUILDLUT_NORMALIZE 4
         //#define BUILDLUT_BIASCORRECT 8
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkBeginLUT(IntPtr qtrk, uint flags);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void QTrkBuildLUTFromFrame(IntPtr qtrk, ref ImageData frame, QTRK_PixelDataType pdt, int plane, [In] Int2[] roipos, int numroi);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkBuildLUT(IntPtr qtrk, void* data, int pitch, QTRK_PixelDataType pdt, int plane, Vector2[] known_pos);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkFinalizeLUT(IntPtr qtrk);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int QTrkGetResultCount(IntPtr qtrk);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int QTrkFetchResults(IntPtr qtrk, out LocalizationResult[] results, int maxResults);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int QTrkFetchResults(IntPtr qtrk, [Out] LocalizationResult[] results, int maxResults);
+
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int QTrkGetQueueLength(IntPtr qtrk, out int maxQueueLen);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern bool QTrkIsIdle(IntPtr qtrk);
 
         /*	virtual void SetConfigValue(std::string name, std::string value) = 0;
@@ -260,36 +347,79 @@ namespace QTrkDotNet
         public static extern void QTrkGetComputedConfig([In] ref QTrkConfig cfg, [Out] out QTrkComputedConfig cc);
 
 
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void ComputeRadialProfile(float[] dst, int radialSteps, int angularSteps, float minradius, float maxradius, Vector2 center, ImageData* src, float mean, bool normalize);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void NormalizeRadialProfile([MarshalAs(UnmanagedType.LPArray)] float[] prof, int rsteps);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void GenerateImageFromLUT(ref ImageData image, [In] ref ImageData zlut, float minradius, float maxradius, Vector3 pos, bool useSplineInterp, int ovs);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void NormalizeImage([In] ref ImageData img);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void ApplyPoissonNoise([In] ref ImageData img, float poissonMax, float maxValue);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void ApplyGaussianNoise([In] ref ImageData img, float sigma);
 
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr QTrkFindBeads(float* image, int w, int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance, out int beadCount);
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		// sample needs to be preallocated with a [roi,roi] image in order for QTrkFindBeads to copy the data into it, otherwise it is ignored.
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr QTrkFindBeads(ref ImageData image, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance, out int beadCount, ref ImageData sample);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void QTrkFreeROIPositions(IntPtr data);
+
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern IntPtr RMCreate(string file, string frameinfo, [In] ref ResultManagerConfig cfg, string semicolonSeparatedNames);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMSetTracker(IntPtr rm, IntPtr qtrk);
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMDestroy(IntPtr rm);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMStoreFrameInfo(IntPtr rm, int frame, double timestamp, float[] cols);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern int RMGetBeadResults(IntPtr rm, int start, int numFrames, int bead, [MarshalAs(UnmanagedType.LPArray)] out LocalizationResult[] results);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMGetFrameCounters(IntPtr rm, out RMFrameCounters dst);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMFlush(IntPtr rm);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern int RMGetResults(IntPtr rm, int startFrame, int numFrames, [MarshalAs(UnmanagedType.LPArray)] out LocalizationResult[] results);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMRemoveBead(IntPtr rm, int bead);
+		[SuppressUnmanagedCodeSecurity]
+		[DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RMGetConfig(IntPtr rm, out ResultManagerConfig cfg);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool SetDllDirectory(string lpPathName);
 
-        public static void SelectNativeLibrary(string baseDir, bool debugMode, bool useCUDA)
+        public static void SelectNativeLibrary(string baseDir, bool debugMode, bool useCUDA, bool use64Bit)
         {
             string dirname = debugMode ? "debug" : "release";
             if (useCUDA) dirname = "cuda_" + dirname;
+            if (use64Bit) dirname = dirname + "_64";
 
-            string finalDir = baseDir+Path.DirectorySeparatorChar +"QTrkDLLs" + Path.DirectorySeparatorChar + dirname + Path.DirectorySeparatorChar;
+			string finalDir = baseDir + Path.DirectorySeparatorChar + "QTrkDLLs" + Path.DirectorySeparatorChar + dirname + Path.DirectorySeparatorChar;
 
             Trace.WriteLine("Selected QTrk native dll directory: " + finalDir);
             SetDllDirectory(finalDir);
         }
 
-    }
+
+	}
 }

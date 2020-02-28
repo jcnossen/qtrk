@@ -358,7 +358,7 @@ void QI::InitStream(StreamInstance* s, QTrkComputedConfig& cc, cudaStream_t stre
 	if(r != CUFFT_SUCCESS) {
 		throw std::runtime_error( SPrintf("CUFFT plan creation failed. FFT len: %d. Batchsize: %d\n", fftlen, batchSize*4));
 	}
-	cufftSetCompatibilityMode(s->fftPlan, CUFFT_COMPATIBILITY_NATIVE);
+	//cufftSetCompatibilityMode(s->fftPlan, CUFFT_COMPATIBILITY_NATIVE);
 	cufftSetStream(s->fftPlan, stream);
 
 	this->qi_FFT_length = fftlen;

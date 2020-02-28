@@ -28,7 +28,6 @@ const float XCorScale = 1.0f; // keep this at 1, because linear oversampling was
 
 #include "DebugResultCompare.h"
 
-static int round(scalar_t f) { return (int)(f+0.5f); }
 template<typename T>
 T conjugate(const T &v) { return T(v.real(),-v.imag()); }
 

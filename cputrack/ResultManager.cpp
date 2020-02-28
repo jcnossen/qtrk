@@ -4,31 +4,7 @@
 
 #define BINFILE_VERSION 3
 
-TextResultFile::TextResultFile(const char *fn, bool write)
-{
-	f = fopen(fn, write?"w":"r");
-}
-
-void TextResultFile::LoadRow(std::vector<vector3f>& pos)
-{
-
-}
-
-void TextResultFile::SaveRow(std::vector<vector3f>& pos)
-{
-}
-
-void BinaryResultFile::LoadRow(std::vector<vector3f>& pos)
-{
-
-}
-
-void BinaryResultFile::SaveRow(std::vector<vector3f>& pos)
-{
-}
-
-
-ResultManager::FrameCounters::FrameCounters()
+RMFrameCounters::RMFrameCounters()
 {
 	startFrame = 0;
 	lastSaveFrame = 0;
@@ -335,16 +311,17 @@ void ResultManager::Flush()
 }
 
 
-ResultManager::FrameCounters ResultManager::GetFrameCounters()
+RMFrameCounters ResultManager::GetFrameCounters()
 {
 	resultMutex.lock();
-	FrameCounters c = cnt;
+	RMFrameCounters c = cnt;
 	resultMutex.unlock();
 	return c;
 }
 
 int ResultManager::GetResults(LocalizationResult* results, int startFrame, int numFrames)
 {
+	int rc=0;
 	resultMutex.lock();
 
 	if (startFrame >= cnt.startFrame && numFrames+startFrame <= cnt.processedFrames)  {
@@ -353,10 +330,12 @@ int ResultManager::GetResults(LocalizationResult* results, int startFrame, int n
 			for (int j=0;j<config.numBeads;j++)
 				results[config.numBeads*f+j] = frameResults[index]->results[j];
 		}
+
+		rc=numFrames;
 	}
 	resultMutex.unlock();
 
-	return numFrames;
+	return rc;
 }
 
 bool ResultManager::CheckResultSpace(int fr)

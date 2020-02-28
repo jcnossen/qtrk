@@ -5,10 +5,11 @@
 #include "std_incl.h"
 #include "utils.h"
 
+#include <windows.h>
+
 #include <cassert>
 #include <cstdlib>
 #include <stdio.h>
-#include <windows.h>
 #include <cstdarg>
 #include <valarray>
 
@@ -21,12 +22,6 @@
 
 #include "../cputrack-test/SharedTests.h"
 #include "BenchmarkLUT.h"
-
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
-#include <thrust/generate.h>
-#include <thrust/reduce.h>
-#include <thrust/functional.h>
 
 #include "FisherMatrix.h"
 
@@ -158,9 +153,9 @@ void QTrkCompareTest()
 			GenerateTestImage(img, center.x, center.y, s, 0.0f);
 			WriteJPEGFile("qtrkzlutimg.jpg", img);
 
-			qtrk.BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x, 0);
+			qtrk.BuildLUT(img.data,img.pitch(),QTrkFloat, x, 0);
 			if (cpucmp) 
-				qtrkcpu.BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x);
+				qtrkcpu.BuildLUT(img.data,img.pitch(),QTrkFloat, x);
 		}
 		qtrk.FinalizeLUT();
 		if (cpucmp) qtrkcpu.FinalizeLUT();
@@ -327,7 +322,7 @@ float SpeedTest(const QTrkSettings& cfg, QueuedTracker* qtrk, int count, bool ha
 			vector2f center( cfg.width/2, cfg.height/2 );
 			float s = zmin + (zmax-zmin) * x/(float)(zplanes-1);
 			GenerateTestImage(img, center.x, center.y, s, 0.0f);
-			qtrk->BuildLUT(img.data,img.pitch(),QTrkFloat, 0, x);
+			qtrk->BuildLUT(img.data,img.pitch(),QTrkFloat, x);
 		}
 		qtrk->FinalizeLUT();
 	}
@@ -432,6 +427,7 @@ SpeedInfo SpeedCompareTest(int w, LocalizeModeEnum locMode, bool haveZLUT, int q
 	delete cputrk;
 
 	QueuedCUDATracker *cudatrk = new QueuedCUDATracker(cfg, cudaBatchSize);
+	cudatrk->EnableTextureCache(false);
 	info.speed_gpu = SpeedTest(cfg, cudatrk, count, haveZLUT, locType, &info.sched_gpu, false);
 	//info.speed_gpu = SpeedTest(cfg, cudatrk, count, haveZLUT, locType, &info.sched_gpu);
 	std::string report = cudatrk->GetProfileReport();
@@ -905,18 +901,18 @@ int main(int argc, char *argv[])
 		//CompareAccuracy("../cputrack-test/lut000.jpg");
 		//QTrkCompareTest();
 
-		ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com.txt", false, 0);
-		ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com-z.txt", true, 0);
-		ProfileSpeedVsROI(LT_XCor1D, "speeds-xcor.txt", true, 0);
+//		ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com.txt", false, 0);
+	//	ProfileSpeedVsROI(LT_OnlyCOM, "speeds-com-z.txt", true, 0);
+		//ProfileSpeedVsROI(LT_XCor1D, "speeds-xcor.txt", true, 0);
 		for (int qi_it=1;qi_it<=4;qi_it++) {
-			ProfileSpeedVsROI(LT_QI, SPrintf("speeds-qi-%d-iterations.txt",qi_it).c_str(), true, qi_it);
+		//	ProfileSpeedVsROI(LT_QI, SPrintf("speeds-qi-%d-iterations.txt",qi_it).c_str(), true, qi_it);
 		}
 
-		/*auto info = SpeedCompareTest(80, false);
-		auto infogc = SpeedCompareTest(80, true);
+		auto info = SpeedCompareTest(80, (LocalizeModeEnum)(LT_QI + LT_LocalizeZ), true, 3);
+		//auto infogc = SpeedCompareTest(80, true);
 		dbgprintf("[gainc=false] CPU: %f, GPU: %f\n", info.speed_cpu, info.speed_gpu); 
-		dbgprintf("[gainc=true] CPU: %f, GPU: %f\n", infogc.speed_cpu, infogc.speed_gpu); 
-		*/
+		//dbgprintf("[gainc=true] CPU: %f, GPU: %f\n", infogc.speed_cpu, infogc.speed_gpu); 
+		
 
 	} catch (const std::exception& e) {
 		dbgprintf("Exception: %s\n", e.what());

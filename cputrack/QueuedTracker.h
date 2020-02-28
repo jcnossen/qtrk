@@ -33,8 +33,7 @@ public:
 	virtual void SetPixelCalibrationFactors(float offsetFactor, float gainFactor) = 0;
 
 	// Frame and timestamp are ignored by tracking code itself, but usable for the calling code
-	// Pitch: Distance in bytes between two successive rows of pixels (e.g. address of (0,0) -  address of (0,1) )
-	// ZlutIndex: Which ZLUT to use for ComputeZ/BuildZLUT
+	// Pitch: Distance in bytes between two successive rows of pixels (e.g. address of (0,1) -  address of (0,0) )
 	virtual void ScheduleLocalization(void* data, int pitch, QTRK_PixelDataType pdt, const LocalizationJob *jobInfo) = 0;
 	void ScheduleImageData(ImageData* data, const LocalizationJob *jobInfo);
 	virtual void ClearResults() = 0;

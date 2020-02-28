@@ -21,7 +21,7 @@ namespace QTrkExample
         {
             InitializeComponent();
 
-            QTrkInstance.SelectDLL(true, false);
+            QTrkInstance.SelectDLL(false, false);
 
             QTrkDLL.TestDLLCallConv(10);
 

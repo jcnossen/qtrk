@@ -6,48 +6,6 @@
 #include "threads.h"
 
 
-class ResultFile
-{
-public:
-	ResultFile() { }
-	virtual ~ResultFile() {}
-	virtual void LoadRow(std::vector<vector3f>& pos) = 0;
-	virtual void SaveRow(std::vector<vector3f>& pos) = 0;
-};
-
-class TextResultFile : public ResultFile
-{
-public:
-	TextResultFile(const char* fn, bool write);
-	void LoadRow(std::vector<vector3f>& pos);
-	void SaveRow(std::vector<vector3f>& pos);
-private:
-	FILE *f;
-};
-
-class BinaryResultFile : public ResultFile
-{
-public:
-	BinaryResultFile(const char* fn, bool write);
-	void LoadRow(std::vector<vector3f>& pos);
-	void SaveRow(std::vector<vector3f>& pos);
-protected:
-	FILE *f;
-};
-
-
-// Labview interface packing
-#pragma pack(push,1)
-struct ResultManagerConfig
-{
-	int numBeads, numFrameInfoColumns;
-	vector3f scaling;
-	vector3f offset; // output will be (position + offset) * scaling
-	int writeInterval; // [frames]
-	uint maxFramesInMemory; // 0 for infinite
-	uint8_t binaryOutput;
-};
-#pragma pack(pop)
 
 // Runs a seperate result fetching thread
 class ResultManager
@@ -64,18 +22,7 @@ public:
 	int GetResults(LocalizationResult* results, int startFrame, int numResults);
 	void Flush();
 
-	struct FrameCounters {
-		FrameCounters();
-		int startFrame; // startFrame for frameResults
-		int processedFrames; // frame where all data is retrieved (all beads)
-		int lastSaveFrame;
-		int capturedFrames;  // lock by resultMutex
-		int localizationsDone;
-		int lostFrames;
-		int fileError;
-	};
-
-	FrameCounters GetFrameCounters();
+	RMFrameCounters GetFrameCounters();
 	void StoreFrameInfo(int frame, double timestamp, float* columns); // return #frames
 	int GetFrameCount();
 	// Make sure that the space for that frame is allocated
@@ -110,11 +57,9 @@ protected:
 	std::vector<std::string> frameInfoNames;
 
 	std::deque< FrameResult* > frameResults;
-	FrameCounters cnt;
+	RMFrameCounters cnt;
 	ResultManagerConfig config;
-
-	ResultFile* resultFile;
-
+	
 	QueuedTracker* qtrk;
 
 	std::string outputFile, frameInfoFile;

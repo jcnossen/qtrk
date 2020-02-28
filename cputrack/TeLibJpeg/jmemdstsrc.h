@@ -27,11 +27,12 @@ of this library and its documentation.
 #ifndef  __TERRALIB_INTERNAL_DRIVER_JPEGLIB_MEMDST_H
 #define  __TERRALIB_INTERNAL_DRIVER_JPEGLIB_MEMDST_H
 
-#include "jpeglib.h"
- 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "jpeglib.h"
 
 /*! Expanded data destination object for memory buffer output 
 	\note THIS IS FOR INTERNAL USE. DO NOT USE IT DIRECTLY.

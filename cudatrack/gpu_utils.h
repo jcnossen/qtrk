@@ -64,7 +64,7 @@ public:
 		}
 		if (s!=0) {
 			if (cudaMalloc(&data, sizeof(T)*s) != cudaSuccess) {
-				throw std::bad_alloc(SPrintf("device_vec<%s> init %d elements failed", typeid(T).name(), s).c_str());
+				throw std::runtime_error(SPrintf("device_vec<%s> init %d elements failed", typeid(T).name(), s).c_str());
 			}
 			size = s;
 		}
@@ -201,7 +201,7 @@ public:
 		if (d) free();
 		this->n = n;
 		if (cudaMallocHost(&d, sizeof(T)*n, flags) != cudaSuccess) {
-			throw std::bad_alloc(SPrintf("%s init %d elements failed", typeid(*this).name(), n).c_str());
+			throw std::runtime_error(SPrintf("%s init %d elements failed", typeid(*this).name(), n).c_str());
 		}
 	}
 	T& operator[](int i) {  return d[i]; }

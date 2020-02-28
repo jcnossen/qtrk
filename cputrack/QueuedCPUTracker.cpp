@@ -136,6 +136,11 @@ QueuedCPUTracker::QueuedCPUTracker(const QTrkComputedConfig& cc)
 QueuedCPUTracker::~QueuedCPUTracker()
 {
 	// wait for threads to finish
+
+	if (!IsIdle()) {
+		throw std::exception("Can't destroy the instance while work is being done");
+	}
+
 	quitWork = true;
 
 	for (int k=0;k<threads.size();k++) {

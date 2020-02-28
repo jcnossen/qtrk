@@ -1,4 +1,4 @@
-﻿namespace OfflineTracker
+﻿namespace NanoBLOC
 {
 	partial class LUTViewer
 	{

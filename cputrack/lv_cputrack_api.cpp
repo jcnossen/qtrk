@@ -145,9 +145,6 @@ CDLL_EXPORT void DLL_CALLCONV get_debug_img_as_array(CPUTracker* tracker, LVArra
 	}
 }
 
-CDLL_EXPORT void DLL_CALLCONV compute_crp(CPUTracker* tracker, LVArray<float>** result, int radialSteps, float *radii, float* center, uint* boundaryHit, LVArray2D<float>** crpmap)
-{
-}
 
 
 CDLL_EXPORT float DLL_CALLCONV compute_asymmetry(CPUTracker* tracker, LVArray<float>** result, int radialSteps, float *radii, float* center, uint* boundaryHit)

@@ -181,7 +181,7 @@ CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUT(QueuedTracker* qtrk, void* data, int 
 template<typename T> struct TImageData;
 typedef TImageData<float> ImageData;
 
-CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUTFromFrame(QueuedTracker* qtrk, ImageData* frame, QTRK_PixelDataType pdt, int plane, ROIPosition* roipos, int numroi);
+CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUTFromFrame(QueuedTracker* qtrk, ImageData* frame, int plane, ROIPosition* roipos, int numroi);
 CDLL_EXPORT void DLL_CALLCONV QTrkFinalizeLUT(QueuedTracker* qtrk);
 
 CDLL_EXPORT int DLL_CALLCONV QTrkGetResultCount(QueuedTracker* qtrk);
@@ -201,6 +201,42 @@ CDLL_EXPORT void DLL_CALLCONV QTrkGetWarnings(QueuedTracker* qtrk, char *dst, in
 
 
 CDLL_EXPORT void QTrkFreeROIPositions(ROIPosition *data);
-CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance);
+	// sample needs to be preallocated with a [roi,roi] image in order for QTrkFindBeads to copy the data into it, otherwise it is ignored.
+CDLL_EXPORT ROIPosition* QTrkFindBeads(ImageData* imgData, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance, int *beadcount, ImageData* sample=0);
 
+class ResultManager;
 
+// Labview interface packing
+#pragma pack(push,1)
+struct ResultManagerConfig
+{
+	int numBeads, numFrameInfoColumns;
+	vector3f scaling;
+	vector3f offset; // output will be (position + offset) * scaling
+	int writeInterval; // [frames]
+	uint maxFramesInMemory; // 0 for infinite
+	uint8_t binaryOutput;
+};
+struct RMFrameCounters {
+	RMFrameCounters();
+	int startFrame; // startFrame for frameResults
+	int processedFrames; // frame where all data is retrieved (all beads)
+	int lastSaveFrame;
+	int capturedFrames;  // lock by resultMutex
+	int localizationsDone;
+	int lostFrames;
+	int fileError;
+};
+
+#pragma pack(pop)
+
+CDLL_EXPORT ResultManager* DLL_CALLCONV RMCreate(const char *file, const char *frameinfo, ResultManagerConfig* cfg, const char* semicolonSeparatedNames);
+CDLL_EXPORT void DLL_CALLCONV RMSetTracker(ResultManager* rm, QueuedTracker* qtrk);
+CDLL_EXPORT void DLL_CALLCONV RMDestroy(ResultManager* rm);
+CDLL_EXPORT void DLL_CALLCONV RMStoreFrameInfo(ResultManager* rm, int frame, double timestamp, float* cols);
+CDLL_EXPORT int DLL_CALLCONV RMGetBeadResults(ResultManager* rm, int start, int numFrames, int bead, LocalizationResult* results);
+CDLL_EXPORT void DLL_CALLCONV RMGetFrameCounters(ResultManager* rm, RMFrameCounters* dst);
+CDLL_EXPORT void DLL_CALLCONV RMFlush(ResultManager* rm);
+CDLL_EXPORT int DLL_CALLCONV RMGetResults(ResultManager* rm, int startFrame, int numFrames, LocalizationResult* results);
+CDLL_EXPORT void DLL_CALLCONV RMRemoveBead(ResultManager* rm, int bead);
+CDLL_EXPORT void DLL_CALLCONV RMGetConfig(ResultManager* rm, ResultManagerConfig* cfg);

@@ -14,13 +14,16 @@ struct cudaImageList {
 	int w,h;
 	int count;
 
-	CUBOTH int fullwidth() { return w; }
-	CUBOTH int fullheight() { return h*count; }
+	CUBOTH int fullwidth() const { return w; }
+	CUBOTH int fullheight() const
+	{ return h*count; }
 
 	enum { MaxImageWidth = 8192 };
 
-	CUBOTH int capacity() { return count; }
-	CUBOTH int numpixels() { return w*h*count; }
+	CUBOTH int capacity() const
+	{ return count; }
+	CUBOTH int numpixels() const
+	{ return w*h*count; }
 
 	static cudaImageList<T> emptyList() {
 		cudaImageList imgl;
@@ -39,7 +42,7 @@ struct cudaImageList {
 		imgl.count = amount;
 
 		if (cudaMallocPitch(&imgl.data, &imgl.pitch, sizeof(T)*imgl.fullwidth(), imgl.fullheight()) != cudaSuccess) {
-			throw std::bad_alloc(SPrintf("cudaImageListf<%s> alloc %dx%dx%d failed", typeid(T).name(), w, h, amount).c_str());
+			throw std::runtime_error(SPrintf("cudaImageListf<%s> alloc %dx%dx%d failed", typeid(T).name(), w, h, amount).c_str());
 		}
 		return imgl;
 	}
@@ -76,7 +79,7 @@ struct cudaImageList {
 
 	
 	// Returns true if bounds are crossed
-	CUBOTH bool boundaryHit(float2 center, float radius)
+	CUBOTH bool boundaryHit(float2 center, float radius) const
 	{
 		return center.x + radius >= w ||
 			center.x - radius < 0 ||
@@ -137,8 +140,10 @@ struct cudaImageList {
 		if(data) cudaMemset2D(data, pitch, 0, w*sizeof(T), count*h);
 	}
 
-	CUBOTH int totalNumPixels() { return pitch*h*count; }
-	CUBOTH int totalNumBytes() { return pitch*h*count*sizeof(T); }
+	CUBOTH int totalNumPixels() const
+	{ return pitch*h*count; }
+	CUBOTH int totalNumBytes() const
+	{ return pitch*h*count*sizeof(T); }
 	
 	CUBOTH static inline T interp(T a, T b, float x) { return a + (b-a)*x; }
 
@@ -228,7 +233,7 @@ struct Image4DCudaArray
 		int imgw, imgh;
 		int layerw;
 
-		CUBOTH int2 getImagePos(int image) 
+		CUBOTH int2 getImagePos(int image) const
 		{ 
 			return make_int2(imgw * (image % layerw), imgh * (image / layerw));
 		}

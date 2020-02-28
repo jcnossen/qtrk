@@ -182,6 +182,7 @@ void ComputeCRP(float* dst, int radialSteps, int angularSteps, float minradius, 
 CDLL_EXPORT void DLL_CALLCONV ComputeRadialProfile(float* dst, int radialSteps, int angularSteps, float minradius, float maxradius, vector2f center, ImageData* src, float mean, bool normalize);
 CDLL_EXPORT void DLL_CALLCONV NormalizeRadialProfile(float* prof, int rsteps);
 void NormalizeZLUT(float *zlut, int numLUTs, int planes, int radialsteps);
+CDLL_EXPORT void DLL_CALLCONV NormalizeImage(ImageData* image);
 CDLL_EXPORT void DLL_CALLCONV GenerateImageFromLUT(ImageData* image, ImageData* zlut, float minradius, float maxradius, vector3f pos, bool useSplineInterp=true, int ovs=4);
 CDLL_EXPORT void DLL_CALLCONV ApplyPoissonNoise(ImageData& img, float poissonMax, float maxValue=255);
 CDLL_EXPORT void DLL_CALLCONV ApplyGaussianNoise(ImageData& img, float sigma);
@@ -215,7 +216,7 @@ int NearestPowerOf3(int v);
 CDLL_EXPORT void DLL_CALLCONV GenerateGaussianSpotImage(ImageData* img, vector2f pos, float sigma, float I0, float Ibg);
 
 std::vector<uchar> ReadToByteBuffer(const char* filename);
-double GetPreciseTime();
+CDLL_EXPORT double GetPreciseTime();
 
 template<typename T>
 void floatToNormalizedInt(T* dst, const float *src, uint w,uint h, T maxValue)

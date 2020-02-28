@@ -895,7 +895,7 @@ int main()
 #ifdef _DEBUG
 //	Matrix3X3::test();
 #endif
-//	SimpleTest();
+	SimpleTest();
 
 //	GenerateZLUTFittingCurve("lut000.jpg");
 
@@ -913,17 +913,17 @@ int main()
 	TestZRange("zrange\\lut013tether","zrange\\exp_qi.radialzlut#13", 0, 0, RWStetson, false, false);
 	TestZRange("zrange\\lut013tether-c","zrange\\exp_qi.radialzlut#13", 0, 0, RWStetson, false, true);*/
 
-	TestZRange("zrange\\longlut1-c","zrange\\long.radialzlut#1", 0,0, RWStetson, false, true);
+/*	TestZRange("zrange\\longlut1-c","zrange\\long.radialzlut#1", 0,0, RWStetson, false, true);
 	TestZRange("zrange\\longlut1","zrange\\long.radialzlut#1", 0,0, RWStetson, false, false);
 	TestZRange("zrange\\longlut3-c","zrange\\long.radialzlut#3", 0,0, RWStetson, false, true);
 	TestZRange("zrange\\longlut3","zrange\\long.radialzlut#3", 0,0, RWStetson, false, false);
-
+	*/
 	//TestZRange("cleanlut1", "lut000.jpg", LT_LocalizeZWeighted, 0);
 	//TestZRange("cleanlut1", "lut000.jpg", LT_LocalizeZWeighted, 1);
 	//TestZRange("cleanlut10", "lut10.jpg", LT_LocalizeZWeighted, 1);
 	//TestZRange("cleanlut10", "lut10.jpg", LT_LocalizeZWeighted, 1);
 	
-//	BenchmarkParams();
+	BenchmarkParams();
 	int N=50;
 	/*ScatterBiasArea(80, 4, 100, N, 3, 1);
 	ScatterBiasArea(80, 4, 100, N, 4, 1);
@@ -950,12 +950,12 @@ int main()
 	//AutoBeadFindTest();
 //	Gauss2DTest<QueuedCPUTracker>();
 	
-	//SpeedTest();
+	SpeedTest();
 	//PixelationErrorTest();
 	//ZTrackingTest();
 	//Test2DTracking();
 	//TestBoundCheck();
-	//QTrkTest();
+
 	//for (int i=1;i<8;i++)
 	//	BuildConvergenceMap(i);
 

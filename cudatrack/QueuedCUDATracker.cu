@@ -54,6 +54,10 @@ Issues:
 
 #include "QI_impl.h"
 
+QueuedTracker* CreateCUDATracker(QTrkSettings* cfg)
+{
+	return new QueuedCUDATracker(*cfg);
+}
 
 // Do CPU-side profiling of kernel launches?
 #define TRK_PROFILE
@@ -84,14 +88,6 @@ static std::vector<int> cudaDeviceList;
 void SetCUDADevices(int* dev, int numdev) {
 	cudaDeviceList.assign(dev,dev+numdev);
 }
-
-
-
-QueuedTracker* CreateQueuedTracker(const QTrkComputedConfig& cc)
-{
-	return new QueuedCUDATracker(cc);
-}
-
 
 static int GetBestCUDADevice()
 {

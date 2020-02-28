@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -22,7 +24,7 @@ namespace QTrkDotNet
 
         public static void SelectDLL(bool useDebug, bool useCUDA, string baseDir="")
         {
-            QTrkDLL.SelectNativeLibrary(baseDir == "" ? Directory.GetCurrentDirectory() : baseDir, useDebug, useCUDA);
+            QTrkDLL.SelectNativeLibrary(baseDir == "" ? Directory.GetCurrentDirectory() : baseDir, useDebug, useCUDA, IntPtr.Size==8);
             IsDLLSelected = true;
         }
 
@@ -51,10 +53,44 @@ namespace QTrkDotNet
             QTrkDLL.QTrkBeginLUT(inst, (uint)( normalize ? 4 : 0 ));
         }
 
-        public void ProcessLUTFrame(ImageData image, Int2[] roiPos, int plane)
-        {
-            QTrkDLL.QTrkBuildLUTFromFrame(inst, ref image, QTRK_PixelDataType.Float, plane, roiPos, roiPos.Length);
-        }
+		public void BuildLUT(FloatImg image, int plane)
+		{
+			ImageData data=image.ImageData;
+			QTrkDLL.QTrkBuildLUT(inst, data.data, data.Pitch, QTRK_PixelDataType.Float, plane, null);
+		}
+
+		public void SetLocalizationMode(LocalizeModeEnum locMode)
+		{
+			QTrkDLL.QTrkSetLocalizationMode(inst, (int)locMode);
+		}
+
+		public void Flush()
+		{
+			QTrkDLL.QTrkFlush(inst);
+		}
+
+		public void ScheduleLocalization(ref ImageData img, LocalizationJob* job)
+		{
+			QTrkDLL.QTrkScheduleLocalization(inst, img.data, img.Pitch, QTRK_PixelDataType.Float, job);
+		}
+
+		public void ScheduleLocalization(FloatImg img, uint frame, int zlut, uint timestamp)
+		{
+			ImageData d =img.ImageData;
+			LocalizationJob job=new LocalizationJob() { frame=frame, timestamp=timestamp, zlutIndex=zlut };
+			QTrkDLL.QTrkScheduleLocalization(inst, d.data, d.Pitch, QTRK_PixelDataType.Float, &job);
+		}
+
+		public void ScheduleFrameBitmap(Bitmap bmp, Int2[] positions, LocalizationJob[] jobInfo)
+		{
+//        public static extern int QTrkScheduleFrame(IntPtr qtrk, void* imgptr, int pitch, int width, int height, Int2* positions, int numROI, QTRK_PixelDataType pdt, LocalizationJob* jobInfo);
+			BitmapData bmpData=bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+			QTrkDLL.QTrkScheduleFrame(inst, bmpData.Scan0, bmpData.Stride, bmpData.Width, bmpData.Height, positions, positions.Length, QTRK_PixelDataType.U8, jobInfo);
+
+			bmp.UnlockBits(bmpData);
+
+//			QTrkDLL.QTrkScheduleFrame(inst, 
+		}
 
         public void FinalizeLUT()
         {
@@ -66,7 +102,7 @@ namespace QTrkDotNet
             Destroy();
         }
 
-        public FloatImg[] GetRadialZLUT()
+        public FloatImg[] GetRadialZLUTImages()
         {
             int count,planes,radialsteps;
             QTrkDLL.QTrkGetRadialZLUTSize(inst, out count, out planes, out radialsteps);
@@ -87,9 +123,69 @@ namespace QTrkDotNet
             return luts;
         }
 
+
+		public FloatImg GetRadialZLUT()
+		{
+			int count, planes, radialsteps;
+			QTrkDLL.QTrkGetRadialZLUTSize(inst, out count, out planes, out radialsteps);
+
+			FloatImg lut = new FloatImg(radialsteps, planes * count);
+			QTrkDLL.QTrkGetRadialZLUT(inst, lut.pixels);
+			return lut;
+		}
+
+		public struct LUTSize
+		{
+			public int count, planes, radialsteps;
+		}
+		public LUTSize GetRadialZLUTSize()
+		{
+			LUTSize s;
+			QTrkDLL.QTrkGetRadialZLUTSize(inst, out s.count, out s.planes, out s.radialsteps);
+			return s;
+		}
+
         public void SetRadialZLUTSize(int nbeads, int numLUTSteps)
         {
             QTrkDLL.QTrkSetRadialZLUT(inst, IntPtr.Zero, nbeads, numLUTSteps);
         }
-    }
+		public void SetRadialZLUT(FloatImg lut, int count, int planes)
+		{
+			Debug.Assert(count*planes==lut.h);
+			QTrkDLL.QTrkSetRadialZLUT(inst, lut.pixels, count, planes);
+		}
+
+		public int GetResultCount()
+		{
+			return QTrkDLL.QTrkGetResultCount(inst);
+		}
+
+		public void GetResults(LocalizationResult[] results)
+		{
+			QTrkDLL.QTrkFetchResults(inst, results, results.Length);
+		}
+
+		public IntPtr InstancePtr
+		{
+			get { return inst; } 
+		}
+
+		public bool IsIdle()
+		{
+			return QTrkDLL.QTrkIsIdle(inst);
+		}
+
+		public int GetQueueLength()
+		{
+			int maxQueueLen;
+			return QTrkDLL.QTrkGetQueueLength(inst, out maxQueueLen);
+		}
+
+		public int GetMaxQueueLength()
+		{
+			int maxQueueLen;
+			QTrkDLL.QTrkGetQueueLength(inst, out maxQueueLen);
+			return maxQueueLen;
+		}
+	}
 }

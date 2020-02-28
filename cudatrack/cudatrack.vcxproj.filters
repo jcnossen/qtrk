@@ -1,19 +1,56 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="..\cputrack\utils.h" />
-    <ClInclude Include="QueuedCUDATracker.h" />
-    <ClInclude Include="..\cputrack\QueuedTracker.h" />
+    <ClCompile Include="..\cputrack\qtrk_c_api.cpp" />
+    <ClCompile Include="silly.cpp" />
+    <ClCompile Include="..\cputrack\BeadFinder.cpp" />
+    <ClCompile Include="..\cputrack\BenchmarkLUT.cpp" />
+    <ClCompile Include="..\cputrack\cpu_tracker.cpp" />
+    <ClCompile Include="..\cputrack\dllmain.cpp" />
+    <ClCompile Include="..\cputrack\fastjpg.cpp" />
+    <ClCompile Include="..\cputrack\QueuedCPUTracker.cpp" />
+    <ClCompile Include="..\cputrack\QueuedTracker.cpp" />
+    <ClCompile Include="..\cputrack\ResultManager.cpp" />
+    <ClCompile Include="..\cputrack\utils.cpp" />
+    <ClCompile Include="..\cputrack\TeLibJpeg\jmemdst.c" />
+    <ClCompile Include="..\cputrack\TeLibJpeg\jmemsrc.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\cputrack\qtrk_c_api.h" />
+    <ClInclude Include="cudafft\cudafft.h" />
     <ClInclude Include="cudaImageList.h" />
     <ClInclude Include="gpu_utils.h" />
+    <ClInclude Include="ImageSampler.h" />
+    <ClInclude Include="Kernels.h" />
+    <ClInclude Include="QI.h" />
+    <ClInclude Include="QI_impl.h" />
+    <ClInclude Include="QueuedCUDATracker.h" />
     <ClInclude Include="simplefft.h" />
+    <ClInclude Include="..\cputrack\BeadFinder.h" />
+    <ClInclude Include="..\cputrack\BenchmarkLUT.h" />
+    <ClInclude Include="..\cputrack\cpu_tracker.h" />
+    <ClInclude Include="..\cputrack\CubicBSpline.h" />
+    <ClInclude Include="..\cputrack\DebugResultCompare.h" />
+    <ClInclude Include="..\cputrack\dllmacros.h" />
+    <ClInclude Include="..\cputrack\FFT2DTracker.h" />
+    <ClInclude Include="..\cputrack\FisherMatrix.h" />
+    <ClInclude Include="..\cputrack\hash_templates.h" />
+    <ClInclude Include="..\cputrack\kissfft.h" />
+    <ClInclude Include="..\cputrack\labview.h" />
+    <ClInclude Include="..\cputrack\LsqQuadraticFit.h" />
+    <ClInclude Include="..\cputrack\QueuedCPUTracker.h" />
+    <ClInclude Include="..\cputrack\QueuedTracker.h" />
+    <ClInclude Include="..\cputrack\random_distr.h" />
+    <ClInclude Include="..\cputrack\ResultManager.h" />
+    <ClInclude Include="..\cputrack\scalar_types.h" />
     <ClInclude Include="..\cputrack\std_incl.h" />
-    <ClInclude Include="QueuedCUDATrackerKernels.h" />
+    <ClInclude Include="..\cputrack\threads.h" />
+    <ClInclude Include="..\cputrack\utils.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="QueuedCUDATracker.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\cputrack\utils.cpp" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

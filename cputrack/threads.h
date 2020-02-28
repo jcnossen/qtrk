@@ -47,6 +47,7 @@ struct Threads
 #undef Sleep
 #undef max
 #undef min
+#pragma warning(disable: 4996) // GetVersionEx is deprecated
 
 struct Threads
 {

@@ -1,6 +1,13 @@
 #include "std_incl.h"
 #include "QueuedTracker.h"
 #include "BeadFinder.h"
+#include "ResultManager.h"
+
+#ifdef CUDA_TRACK
+QueuedTracker* CreateCUDATracker(QTrkSettings* cfg);
+#else
+QueuedTracker* CreateCPUTracker(QTrkSettings* cfg);
+#endif
 
 CDLL_EXPORT void DLL_CALLCONV TestDLLCallConv(int a)
 {
@@ -23,14 +30,19 @@ CDLL_EXPORT void QTrkFreeROIPositions(ROIPosition *data)
 	delete[] data;
 }
 
-CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance)
+CDLL_EXPORT ROIPosition* QTrkFindBeads(ImageData* imgData, int smpCornerPosX, int smpCornerPosY, int roi, float imgRelDist, float acceptance, int* beadcount, ImageData* sample)
 {
 	BeadFinder::Config cfg;
 	cfg.img_distance = imgRelDist;
 	cfg.roi = roi;
 	cfg.similarity = acceptance;
-	ImageData img = ImageData(image, w,h);
+	ImageData& img = *imgData;
 	ImageData sampleImg = img.subimage(smpCornerPosX, smpCornerPosY, roi,roi);
+
+	if (sample && sample->w==roi && sample->h == roi) {
+		sampleImg.copyTo(sample->data);
+	}
+
 	auto results = BeadFinder::Find(&img, sampleImg.data, &cfg);
 	sampleImg.free();
 
@@ -41,6 +53,7 @@ CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerP
 		output[i].y = results[i].y;
 	}
 
+	*beadcount=results.size();
 	return output;
 }
 
@@ -48,7 +61,11 @@ CDLL_EXPORT ROIPosition* QTrkFindBeads(float* image, int w,int h, int smpCornerP
 
 CDLL_EXPORT QueuedTracker* DLL_CALLCONV QTrkCreateInstance(QTrkSettings *cfg)
 {
-	return CreateQueuedTracker(*cfg);
+#ifdef CUDA_TRACK
+	return CreateCUDATracker(cfg);
+#else
+	return CreateCPUTracker(cfg);
+#endif
 }
 
 CDLL_EXPORT void DLL_CALLCONV QTrkFreeInstance(QueuedTracker* qtrk)
@@ -115,16 +132,6 @@ CDLL_EXPORT void DLL_CALLCONV QTrkBeginLUT(QueuedTracker* qtrk, uint flags)
 	qtrk->BeginLUT(flags);
 }
 
-CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUTFromFrame(QueuedTracker* qtrk, ImageData* frame, QTRK_PixelDataType pdt, int plane, ROIPosition* roipos, int numroi)
-{
-	ImageData extracted = ImageData::alloc(qtrk->cfg.width, qtrk->cfg.height*numroi);
-	for (int i=0;i<numroi;i++){
-		frame->copyTo(extracted, roipos[i].x, roipos[i].y, 0, i*qtrk->cfg.height, qtrk->cfg.width,qtrk->cfg.height);
-	}
-	qtrk->BuildLUT(extracted.data, sizeof(float)*qtrk->cfg.width, QTrkFloat, plane);
-	extracted.free();
-}
-
 CDLL_EXPORT void DLL_CALLCONV QTrkBuildLUT(QueuedTracker* qtrk, void* data, int pitch, QTRK_PixelDataType pdt, int plane, vector2f* known_pos)
 {
 	qtrk->BuildLUT(data, pitch, pdt, plane, known_pos);
@@ -166,4 +173,71 @@ CDLL_EXPORT void DLL_CALLCONV QTrkGetWarnings(QueuedTracker* qtrk, char *dst, in
 {
 	strncpy(dst, qtrk->GetWarnings().c_str(), maxStrLen);
 }
+
+
+
+
+
+CDLL_EXPORT ResultManager* DLL_CALLCONV RMCreate(const char *file, const char *frameinfo, ResultManagerConfig* cfg, const char* semicolonSeparatedNames)
+{
+	std::vector<std::string> colnames;
+	std::string name;
+	for (int i=0; semicolonSeparatedNames[i]; i++ ){
+		char c=semicolonSeparatedNames[i];
+		if(c == ';') {
+			colnames.push_back(name);
+			name.clear();
+		}
+		name+=c;
+	}
+	if(name.size()>0) colnames.push_back(name);
+
+	return new ResultManager(file, frameinfo, cfg, colnames);
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMSetTracker(ResultManager* rm, QueuedTracker* qtrk)
+{
+	rm->SetTracker(qtrk);
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMDestroy(ResultManager* rm)
+{
+	delete rm;
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMStoreFrameInfo(ResultManager* rm, int frame, double timestamp, float* cols)
+{
+	rm->StoreFrameInfo(frame,timestamp,cols);
+}
+
+CDLL_EXPORT int DLL_CALLCONV RMGetBeadResults(ResultManager* rm, int start, int numFrames, int bead, LocalizationResult* results)
+{
+	return rm->GetBeadPositions(start,start+numFrames, bead, results);
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMGetFrameCounters(ResultManager* rm, RMFrameCounters* fc)
+{
+	*fc=rm->GetFrameCounters();
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMFlush(ResultManager* rm)
+{
+	rm->Flush();
+}
+
+CDLL_EXPORT int DLL_CALLCONV RMGetResults(ResultManager* rm, int startFrame, int numFrames, LocalizationResult* results)
+{
+	return rm->GetResults(results , startFrame, numFrames);
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMRemoveBead(ResultManager* rm, int bead)
+{
+	rm->RemoveBeadResults(bead);
+}
+
+CDLL_EXPORT void DLL_CALLCONV RMGetConfig(ResultManager* rm, ResultManagerConfig* cfg)
+{
+	*cfg=rm->Config();
+}
+
 

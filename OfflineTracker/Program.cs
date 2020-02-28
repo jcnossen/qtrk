@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace OfflineTracker
+namespace NanoBLOC
 {
 	static class Program
 	{
@@ -16,7 +17,10 @@ namespace OfflineTracker
 		{
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
-			Application.Run(new OfflineTrackerDlg());
+
+			var intro = new IntroDlg();
+			intro.Show();
+			Application.Run();
 		}
 	}
 }

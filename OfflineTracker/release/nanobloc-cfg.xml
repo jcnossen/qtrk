@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<Settings xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <libraryConfig>
+    <useDebug>false</useDebug>
+    <useCUDA>false</useCUDA>
+  </libraryConfig>
+  <expBaseDir>C:\dev\ext\qtrk\OfflineTracker</expBaseDir>
+  <lutSubdir>Trk_20_a(Z64RES200Avg 1)</lutSubdir>
+  <selectedExpDirs>
+    <string>Trk_20_a(Z64RES200Avg 1)</string>
+  </selectedExpDirs>
+  <zCorrectionFactor>1</zCorrectionFactor>
+  <lutStep>50</lutStep>
+  <pixelSize>80</pixelSize>
+  <autoFindAcceptance>0.5</autoFindAcceptance>
+  <autoFindMinDist>1</autoFindMinDist>
+  <trackerConfig>
+    <numThreads>-1</numThreads>
+    <cuda_device>-2</cuda_device>
+    <com_bgcorrection>0</com_bgcorrection>
+    <zlut_minradius>6</zlut_minradius>
+    <zlut_radial_coverage>3</zlut_radial_coverage>
+    <zlut_angular_coverage>0.7</zlut_angular_coverage>
+    <zlut_roi_coverage>1</zlut_roi_coverage>
+    <qi_iterations>3</qi_iterations>
+    <qi_minradius>5</qi_minradius>
+    <qi_radial_coverage>3</qi_radial_coverage>
+    <qi_angular_coverage>0.7</qi_angular_coverage>
+    <qi_roi_coverage>1</qi_roi_coverage>
+    <qi_angstep_factor>1</qi_angstep_factor>
+    <xc1_profileLength>128</xc1_profileLength>
+    <xc1_profileWidth>32</xc1_profileWidth>
+    <xc1_iterations>2</xc1_iterations>
+    <gauss2D_iterations>0</gauss2D_iterations>
+    <gauss2D_sigma>4</gauss2D_sigma>
+    <downsample>0</downsample>
+    <ROI>60</ROI>
+  </trackerConfig>
+  <ROI>60</ROI>
+</Settings>

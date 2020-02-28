@@ -260,6 +260,10 @@ void NormalizeRadialProfile(scalar_t * prof, int rsteps)
 	}*/
 }
 
+void NormalizeImage(ImageData *img)
+{
+	img->normalize();
+}
 
 void NormalizeZLUT(float* zlut ,int numBeads, int planes, int radialsteps)
 {

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using QTrkDotNet;
 
-namespace OfflineTracker
+namespace NanoBLOC
 {
 	public partial class LUTViewer : UserControl
 	{
@@ -18,24 +18,38 @@ namespace OfflineTracker
 			InitializeComponent();
 		}
 
-        FloatImg[] lutList;
+		int zplanes;
+		FloatImg lutImage;
 
-        public QTrkDotNet.FloatImg[] LUTs
-        {
-            get
-            {
-                return lutList;
-            }
-            set
-            {
-                lutList = value;
-                trackBarBeadIndex.Maximum = lutList.Length - 1;
-            }
-        }
+		public void SetLUT(FloatImg lutimg, int zplanes)
+		{
+			lutImage = lutimg;
+			this.zplanes = zplanes;
+
+			if (lutimg != null)
+			{
+				int lutcount = lutimg.h / zplanes;
+				trackBarBeadIndex.Maximum = Math.Max(0, lutcount - 1);
+			}
+			UpdateImage();
+		}
 
         private void trackBarBeadIndex_Scroll(object sender, EventArgs e)
         {
-            pictureBoxLUT.Image = lutList[trackBarBeadIndex.Value].ToImage();
+			UpdateImage();
         }
+
+		void UpdateImage()
+		{
+			if (lutImage!=null) {
+				using (var img = lutImage.ExtractSubsection(trackBarBeadIndex.Value * zplanes, zplanes))
+				{
+					img.Normalize();
+					pictureBoxLUT.Image = img.ToImage();
+				}
+			}
+			else
+				pictureBoxLUT.Image = null;
+		}
     }
 }
