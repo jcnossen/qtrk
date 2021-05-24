@@ -193,7 +193,7 @@ struct cudaImageList {
 
 		computeImagePos(rx, ry, idx);
 
-		float fx=x-floor(x), fy = y-floor(y);
+		float fx=x-floorf(x), fy = y-floorf(y);
 		float u = rx + 0.5f;
 		float v = ry + 0.5f;
 

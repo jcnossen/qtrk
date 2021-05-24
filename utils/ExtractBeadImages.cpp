@@ -1,5 +1,5 @@
-#include "std_incl.h"
-#include "utils.h"
+#include "../cputrack/std_incl.h"
+#include "../cputrack/utils.h"
 #include "ExtractBeadImages.h"
 #include "tinydir.h"
 
